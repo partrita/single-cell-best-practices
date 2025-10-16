@@ -1,43 +1,43 @@
-# Prior art
+# 기존 연구
 
-Single-cell analysis has evolving from a niche area of interest into a well-established field of study.
-As a result, we are certainly not the first to produce a book on this subject, nor to provide guides and tutorials.
-In the sections that follow, we review two notable and ongoing initiatives aimed at teaching single-cell analysis, highlighting both their similarities to and differences from this book.
+단일 세포 분석은 틈새 연구 분야에서 시작하여 이제는 잘 정립된 연구 분야로 발전했습니다.
+결과적으로, 우리는 이 주제에 대한 책을 만들거나 가이드와 튜토리얼을 제공하는 첫 번째 주자가 아닙니다.
+이어지는 섹션에서는 단일 세포 분석 교육을 목표로 하는 두 가지 주목할 만하고 진행 중인 이니셔티브를 검토하고, 이 책과의 유사점과 차이점을 모두 강조합니다.
 
 (introduction-prior-art-key-takeaway-1)=
 
-## Bioconductor OSCA and OSTA books
+## Bioconductor OSCA 및 OSTA 서적
 
-Orchestrating Single-Cell Analysis with Bioconductor (Bioconductor OSCA) {cite}`osca`, available online at https://bioconductor.org/books/release/OSCA/, is an online book designed to teach common workflows for analyzing of single-cell {term}`RNA`-{term}`Sequencing` (scRNA-seq) data using the R based Bioconductor ecosystem {cite}`pa:Huber2015`.
-An accompanying paper with the same title {cite}`Amezquita2020`provides an overview of single-cell analysis with Bioconductor, while the online book offers more in-depth coverage, featuring detailed explanations and extensive code examples.
+Bioconductor를 사용한 단일 세포 분석 오케스트레이션(Bioconductor OSCA) {cite}`osca`는 https://bioconductor.org/books/release/OSCA/ 에서 온라인으로 제공되며, R 기반 Bioconductor 생태계 {cite}`pa:Huber2015`를 사용하여 단일 세포 {term}`RNA`-{term}`서열 분석`(scRNA-seq) 데이터를 분석하기 위한 일반적인 워크플로우를 가르치도록 설계된 온라인 서적입니다.
+같은 제목의 함께 제공되는 논문 {cite}`Amezquita2020`은 Bioconductor를 사용한 단일 세포 분석에 대한 개요를 제공하며, 온라인 서적은 자세한 설명과 광범위한 코드 예제를 통해 더 심층적인 내용을 다룹니다.
 
-The OSCA book is highly comprehensive in its treatment of basic scRNA-seq analysis, offering clear explanations and detailed workflow examples.
-However, it does not extend to other single-cell omics, such as single-cell ATAC-seq (scATAC-seq).
-Spatial transcriptomics is addressed separately in the complementary book Orchestrating Spatially-Resolved Transcriptomics Analysis with Bioconductor (Bioconductor OSTA), available at https://lmweber.org/OSTA-book/.
+OSCA 서적은 기본적인 scRNA-seq 분석에 대해 매우 포괄적으로 다루며, 명확한 설명과 상세한 워크플로우 예제를 제공합니다.
+그러나 단일 세포 ATAC-seq(scATAC-seq)와 같은 다른 단일 세포 오믹스까지 다루지는 않습니다.
+공간 전사체학은 보완 서적인 Bioconductor를 사용한 공간 분해 전사체학 분석 오케스트레이션(Bioconductor OSTA)에서 별도로 다루며, https://lmweber.org/OSTA-book/ 에서 확인할 수 있습니다.
 
-As both books are tailored to the Bioconductor ecosystem, they exclusively use tools available within Bioconductor.
-While these tools are highly effective, they may not always provide the most optimal solution for every analysis, as acknowledged by the books themselves.
-Overall, the Bioconductor books are particularly well-suited for individuals with a foundational knowledge of R and a strong background in biology who wish to learn how to analyze single-cell and spatial transcriptomics data within the Bioconductor framework.
+두 서적 모두 Bioconductor 생태계에 맞춰져 있으므로 Bioconductor 내에서 사용 가능한 도구만 독점적으로 사용합니다.
+이러한 도구는 매우 효과적이지만, 서적 자체에서도 인정하듯이 모든 분석에 항상 최적의 솔루션을 제공하지는 않을 수 있습니다.
+전반적으로 Bioconductor 서적은 R에 대한 기초 지식과 생물학에 대한 탄탄한 배경 지식을 갖춘 개인이 Bioconductor 프레임워크 내에서 단일 세포 및 공간 전사체학 데이터를 분석하는 방법을 배우기에 특히 적합합니다.
 
 (introduction-prior-art-key-takeaway-2)=
 
-## Current best practices in single-cell RNA-seq analysis: a tutorial
+## 단일 세포 RNA-seq 분석의 현재 모범 사례: 튜토리얼
 
-Current Best Practices in Single-Cell {term}`RNA`-Seq Analysis: A Tutorial {cite}`pa:Lücken2019` by Malte Lücken and Fabian Theis introduces best practices for scRNA-seq analysis.
-Its key contribution lies in not only reviewing potential analysis steps but also recommending best practices based on independent benchmarks.
-When specific best-practice guidelines are unavailable, the authors provide general recommendations for analysis approaches.
-The fundamental idea of focusing on independent benchmarks inspired our work substantially.
-The paper is complemented by an [example analysis of mouse intestinal epithelium regions](https://github.com/theislab/single-cell-tutorial/) from Haber et al. {cite}`pa:Haber2017`.
+Malte Lücken과 Fabian Theis의 단일 세포 {term}`RNA`-Seq 분석의 현재 모범 사례: 튜토리얼 {cite}`pa:Lücken2019`은 scRNA-seq 분석을 위한 모범 사례를 소개합니다.
+이 논문의 핵심 기여는 잠재적인 분석 단계를 검토할 뿐만 아니라 독립적인 벤치마크를 기반으로 모범 사례를 추천하는 데 있습니다.
+특정 모범 사례 가이드라인이 없는 경우 저자는 분석 접근 방식에 대한 일반적인 권장 사항을 제공합니다.
+독립적인 벤치마크에 집중한다는 기본 아이디어는 우리 연구에 상당한 영감을 주었습니다.
+이 논문은 Haber et al. {cite}`pa:Haber2017`의 [쥐 소장 상피 영역의 예제 분석](https://github.com/theislab/single-cell-tutorial/)으로 보완됩니다.
 
-In comparison to Bioconductor OSCA, this paper and its associated analysis are not constrained by a specific tool ecosystem, offering a broader perspective on the range of topics covered.
-However, the accompanying example analysis lacks beginner-friendliness and has become outdated.
-Analogously to Bioconductor OSCA, Lücken & Theis do not address newer developments such as RNA velocity, spatial transcriptomics, or multi-omics.
+Bioconductor OSCA와 비교하여, 이 논문과 관련 분석은 특정 도구 생태계에 제약을 받지 않으므로 다루는 주제의 범위에 대해 더 넓은 관점을 제공합니다.
+그러나 함께 제공되는 예제 분석은 초보자에게 친숙하지 않고 오래되었습니다.
+Bioconductor OSCA와 유사하게, Lücken & Theis는 RNA 속도, 공간 전사체학 또는 다중 오믹스와 같은 최신 개발 사항을 다루지 않습니다.
 
-Despite these limitations, we highly recommend this paper as a valuable introduction to the field and as a guide to initial best practices in scRNA-seq analysis.
-The chapters in this book build on the latest best practices, offering an updated perspective on the field. Furthermore, the workflows in this book are explained in greater detail, providing readers with the background information necessary to effectively apply the methods.
-We advise against relying on the example case study provided with the paper and instead encourage readers to explore the detailed chapters in this book for a more comprehensive and up to date understanding.
+이러한 한계에도 불구하고, 우리는 이 논문을 이 분야에 대한 귀중한 소개 자료이자 scRNA-seq 분석의 초기 모범 사례에 대한 가이드로서 강력히 추천합니다.
+이 책의 장들은 최신 모범 사례를 기반으로 하며, 이 분야에 대한 업데이트된 관점을 제공합니다. 또한, 이 책의 워크플로우는 더 자세히 설명되어 독자가 방법을 효과적으로 적용하는 데 필요한 배경 정보를 제공합니다.
+우리는 논문과 함께 제공되는 예제 사례 연구에 의존하지 말고, 보다 포괄적이고 최신 정보를 얻으려면 이 책의 상세한 장을 탐색할 것을 권장합니다.
 
-## References
+## 참고 문헌
 
 ```{bibliography}
 :filter: docname in docnames

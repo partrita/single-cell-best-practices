@@ -1,12 +1,12 @@
-# Acknowledgements
+# 감사의 말
 
-It is often times easy to forget that many of the biggest advancements in science are only possible because of some seemingly unimportant experiments in the past.
-The single-cell field in all of its entirety is built on top of decades of fundamental research in biology and computer science.
-Without the fundamental sequencing and raw data processing techniques, we would not even dream of sequencing single cells.
-Imagine unsupervised data analysis of single-cell data today without fundamental algorithms to pre-process and visualize it.
-But these algorithms not only needed to be theoretically developed, but made accessible and reusable to all users, which is only possible because hardworking students are putting in the time to develop and maintain all frameworks and tools.
-We are stepping on the shoulders of giants and proud to be able to contribute a small part to guide users to analyzing single-cell data effectively.
+과학의 가장 큰 발전 중 많은 부분이 과거의 사소해 보이는 실험 덕분에 가능하다는 사실을 잊기 쉽습니다.
+단일 세포 분야 전체는 생물학과 컴퓨터 과학의 수십 년에 걸친 기초 연구 위에 구축되었습니다.
+기초적인 시퀀싱 및 원시 데이터 처리 기술이 없었다면 우리는 단일 세포를 시퀀싱하는 꿈조차 꾸지 못했을 것입니다.
+기초적인 전처리 및 시각화 알고리즘 없이 오늘날 단일 세포 데이터의 비지도 데이터 분석을 상상해 보십시오.
+그러나 이러한 알고리즘은 이론적으로 개발되어야 할 뿐만 아니라 모든 사용자가 접근하고 재사용할 수 있도록 만들어져야 했는데, 이는 열심히 일하는 학생들이 모든 프레임워크와 도구를 개발하고 유지하는 데 시간을 투자하기 때문에 가능한 일입니다.
+우리는 거인의 어깨 위에 서 있으며 사용자가 단일 세포 데이터를 효과적으로 분석하도록 안내하는 데 작은 부분을 기여할 수 있다는 것을 자랑스럽게 생각합니다.
 
-This book is a joint effort of the single-cell community and could not have been written without the help of a massive amount of people.
-We are very grateful to all of our co-authors and are proud of what we jointly achieved.
-Detailed lists of co-authors can be found in the acknowledgements' section in the respective chapters.
+이 책은 단일 세포 커뮤니티의 공동 노력의 산물이며 수많은 사람들의 도움이 없었다면 쓰여질 수 없었을 것입니다.
+우리는 모든 공동 저자에게 매우 감사하며 우리가 공동으로 달성한 것을 자랑스럽게 생각합니다.
+공동 저자의 자세한 목록은 각 챕터의 감사의 말 섹션에서 찾을 수 있습니다.
