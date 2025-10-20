@@ -1,32 +1,32 @@
-1. **conda 설치**:
+1. **Install conda**:
 
-   - 환경을 생성하기 전에 시스템에 [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html)가 설치되어 있는지 확인하십시오.
+   - Before creating the environment, ensure that [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html) is installed on your system.
 
-2. **yml 내용 저장**:
+2. **Save the yml content**:
 
-   - yml 탭의 내용을 `environment.yml`이라는 파일에 복사합니다.
+   - Copy the content from the yml tab into a file named `environment.yml`.
 
-3. **환경 생성**:
+3. **Create the environment**:
 
-   - 터미널 또는 명령 프롬프트를 엽니다.
-   - 다음 명령을 실행합니다:
+   - Open a terminal or command prompt.
+   - Run the following command:
      ```bash
      conda env create -f environment.yml
      ```
 
-4. **환경 활성화**:
+4. **Activate the environment**:
 
-   - 환경이 생성되면 다음을 사용하여 활성화합니다:
+   - After the environment is created, activate it using:
      ```bash
      conda activate <environment_name>
      ```
-   - `<environment_name>`을 `environment.yml` 파일에 지정된 이름으로 바꿉니다. yml 파일에서는 다음과 같이 표시됩니다:
+   - Replace `<environment_name>` with the name specified in the `environment.yml` file. In the yml file it will look like this:
      ```yaml
      name: <environment_name>
      ```
 
-5. **설치 확인**:
-   - 다음을 실행하여 환경이 성공적으로 생성되었는지 확인합니다:
+5. **Verify the installation**:
+   - Check that the environment was created successfully by running:
      ```bash
      conda env list
      ```

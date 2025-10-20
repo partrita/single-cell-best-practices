@@ -1,1 +1,1 @@
-# 데이터 인프라
+# Data infrastructure

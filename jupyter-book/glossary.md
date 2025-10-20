@@ -1,218 +1,218 @@
-# 용어집
+# Glossary
 
 ```{glossary}
-어댑터 서열 (Adapter sequences)
-    시퀀싱을 위한 라이브러리 준비 과정에서 DNA 또는 RNA 조각의 끝에 연결되는 짧은 합성 DNA 또는 RNA 서열입니다.
-    이 어댑터는 조각을 플로우셀에 결합하고 증폭 및 시퀀싱을 가능하게 하는 데 필수적입니다.
-    그러나 시퀀싱 후 어댑터가 제거되지 않으면 리드에 나타나 정렬 및 후속 분석을 방해할 수 있습니다.
+Adapter sequences
+    Short, synthetic DNA or RNA sequences that are ligated to the ends of DNA or RNA fragments during library preparation for sequencing.
+    These adapters are essential for binding the fragments to the flowcell and enabling amplification and sequencing.
+    However, if adapters are not trimmed after sequencing, they can appear in the reads, potentially interfering with alignment and downstream analyses.
 
-알고리즘 (Algorithm)
-    문제를 해결하기 위한 미리 정의된 명령어 집합입니다.
+Algorithm
+    A pre-defined set of instructions to solve a problem.
 
 AnnData
-    단일 세포 및 기타 오믹스 분석에서 일반적으로 사용되는 주석이 달린 데이터 행렬을 처리하기 위한 Python 패키지입니다.
-    행(관측치)과 열(특성)에 연관된 메타데이터를 가질 수 있는 행렬로 데이터를 효율적으로 저장하는 방법을 제공합니다.
-    [AnnData](https://anndata.readthedocs.io/en/latest/index.html)는 슬라이싱, 서브세팅 및 H5AD, Zarr와 같은 형식으로 디스크에 저장하는 것을 지원합니다.
+    A Python package for handling annotated data matrices, commonly used in single-cell and other omics analyses.
+    It provides an efficient way to store data as a matrix where rows (observations) and columns (features) can have associated metadata.
+    [AnnData](https://anndata.readthedocs.io/en/latest/index.html) supports slicing, subsetting, and saving to disk in formats like H5AD and Zarr.
 
 BAM
-    BAM 파일은 시퀀싱 리드의 참조 유전체에 대한 정렬을 저장하는 SAM(Sequence Alignment/Map) 파일의 이진 압축 버전입니다.
-    {term}`SAM` 파일과 동일한 정보(리드 서열, 품질 점수, 정렬 위치 포함)를 포함하지만 더 공간 효율적인 형식으로 더 빠른 처리와 감소된 저장 요구 사항을 가능하게 합니다.
+    BAM files are binary, compressed versions of SAM (Sequence Alignment/Map) files that store sequencing read alignments to a reference genome.
+    They contain the same information as {term}`SAM` files - including read sequences, quality scores, and alignment positions - but in a more space-efficient format that enables faster processing and reduced storage requirements.
 
-증폭 편향 (Amplification bias)
-    DNA 또는 RNA 증폭(예: PCR) 중에 발생하는 왜곡으로, 특정 서열이 다른 서열보다 더 효율적으로 복사됩니다. 이는 원래 유전 물질의 불균등하거나 부정확한 표현으로 이어져 시퀀싱이나 유전자 발현 분석과 같은 실험 결과에 영향을 줄 수 있습니다.
+Amplification bias
+    A distortion that occurs during DNA or RNA amplification (e.g., PCR), where certain sequences are copied more efficiently than others. This can lead to uneven or inaccurate representation of the original genetic material, affecting results in experiments like sequencing or gene expression analysis.
 
-바코드 (Barcode)
-    동일한 세포에서 유래한 리드를 식별하는 데 사용되는 짧은 DNA 바코드 조각("태그")입니다.
-    리드는 나중에 원시 데이터 처리 단계에서 바코드로 그룹화됩니다.
+Barcode
+    Short DNA barcode fragments ("tags") that are used to identify reads originating from the same cell.
+    Reads are later grouped by their barcode during raw data processing steps.
 
-배치 효과 (Batch effect)
-    실험에서 데이터셋 분포 변화를 일으키는 기술적인 교란 요인입니다.
-    배치 효과의 원인이 실험에서 관심 결과와 상관 관계가 있는 경우 일반적으로 부정확한 결론으로 이어지므로 설명(보통 제거)해야 합니다.
+Batch effect
+    Technical confounding factors in an experiment that cause dataset distribution shifts.
+    Usually lead to inaccurate conclusions if the causes of the batch effects are correlated with outcomes of interest in an experiment and should be accounted for (usually removed).
 
-벤치마크 (Benchmark)
-    미리 정의된 메트릭에 대해 여러 도구의 성능을 (독립적으로) 비교하는 것입니다.
+Benchmark
+    An (independent) comparison of performance of several tools with respect to pre-defined metrics.
 
-벌크 RNA 시퀀싱 (Bulk RNA sequencing)
-    단일 세포 시퀀싱과 달리 벌크 시퀀싱은 여러 세포의 평균 발현 값을 측정합니다. 따라서 해상도는 손실되지만 벌크 시퀀싱은 일반적으로 더 저렴하고 덜 힘들며 분석이 더 빠릅니다.
+Bulk RNA sequencing
+    Contrary to single-cell sequencing, bulk sequencing measures the average expression values of several cells. Therefore, resolution is lost, but bulk sequencing is usually cheaper, less laborious and faster to analyze.
 
-세포 (Cell)
-    생명의 기본 단위로, 막으로 둘러싸인 세포질로 구성되며 단백질 및 핵산과 같은 생체 분자를 포함합니다.
-    세포는 특정 기능을 획득하고, 다른 유형으로 전환하고, 분열하고, 소통하여 유기체를 유지합니다.
-    세포 구조, 활동 및 상호 작용을 연구하면 유전자 발현 역학, 세포 궤적, 발달 계통 및 질병 메커니즘에 대한 통찰력을 얻을 수 있습니다.
+Cell
+    The fundamental unit of life, consisting of cytoplasm enclosed within a membrane, containing biomolecules such as proteins and nucleic acids.
+    Cells acquire specific functions, transition into different types, divide, and communicate to sustain an organism.
+    Studying cell structure, activity, and interactions enables insights into gene expression dynamics, cellular trajectories, developmental lineages, and disease mechanisms.
 
-세포 유형 주석 (Cell type annotation)
-    세포 {term}`군집 <Cluster>`에 {term}`세포 유형 <Cell type>`으로 레이블을 지정하는 과정입니다.
-    일반적으로 세포 유형 특정 마커를 기반으로 하거나, 분류기를 사용하여 자동으로 수행하거나, 참조에 매핑하여 수행됩니다.
+Cell type annotation
+    The process of labeling groups of {term}`clusters <Cluster>` of cells by {term}`cell type <Cell type>`.
+    Commonly done based on cell type specific markers, automatically with classifiers or by mapping against a reference.
 
-세포 유형 (Cell type)
-    공통적인 형태학적 또는 표현형적 특징을 공유하는 세포입니다.
+Cell type
+    Cells that share common morphological or phenotypic features.
 
-세포 상태 (Cell state)
-    세포는 {term}`세포 유형 <Cell type>` 또는 세포 주기, 교란 상태 또는 기타 특징에 의해 정의된 다른 세포 상태에 따라 주석을 달 수 있습니다.
+Cell state
+    Cells can be annotated according to {term}`cell type <Cell type>` or other cell states as defined by the cell-cycle, perturbational state or other features.
 
-염색질 (Chromatin)
-    DNA와 단백질의 복합체로, 핵 내부에 DNA를 효율적으로 포장하고 유전자 발현 조절에 관여합니다.
+Chromatin
+    The complex of DNA and proteins efficiently packaging the DNA inside the nucleus and involved in regulating gene expression.
 
-코돈 (Codon)
-    단백질 합성에서 특정 아미노산 또는 시작/중지 신호에 해당하는 세 개의 뉴클레오티드 서열입니다.
-    코돈은 유전 정보가 단백질로 번역되는 방식을 결정하는 유전 암호의 기본 단위입니다.
+Codon
+    A sequence of three nucleotides corresponding to a specific amino acid or a start/stop signal in protein synthesis.
+    Codons are the basic units of the genetic code, determining how genetic information is translated into proteins.
 
 CpG
-    5' &rarr; 3' 방향을 따라 시토신(C) 뒤에 구아닌(G)이 오는 DNA 서열로, 인산다이에스터 결합으로 연결되어 있습니다.
-    CpG 사이트는 종종 유전자 프로모터 근처에서 CpG 섬이라는 군집으로 발견됩니다.
-    메틸화되지 않은 CpG 사이트는 유전자 활성화와 관련이 있으며, 메틸화된 CpG 사이트는 유전자 억제로 이어질 수 있습니다.
+    A DNA sequence in which a cytosine (C) is followed by a guanine (G) along the 5' &rarr; 3' direction, linked by a phosphodiester bond.
+    CpG sites are often found in clusters called CpG islands near gene promoters.
+    Unmethylated CpG sites are associated with gene activation, while methylated CpG sites can lead to gene inhibition.
 
-군집 (Cluster)
-    유사성을 공유하는 모집단 또는 데이터 포인트 그룹입니다.
-    단일 세포에서 군집은 일반적으로 주석에 사용되는 공통 기능 또는 마커 유전자 발현을 공유합니다({term}`세포 유형 주석 <Cell type annotation>` 참조).
+Cluster
+    A group of a population or data points that share similarities.
+    In single-cell, clusters usually share a common function or marker gene expression that is used for annotation (see {term}`cell type annotation <Cell type annotation>`).
 
-상보적 DNA (cDNA)
-    RNA 주형에서 역전사 효소에 의해 합성된 DNA입니다.
-    cDNA는 RNA보다 안정적이고 캡처된 전사체를 증폭하고 유전자 발현 분석을 위해 시퀀싱할 수 있기 때문에 RNA-seq 라이브러리 준비에 일반적으로 사용됩니다.
+Complementary DNA (cDNA)
+    DNA synthesized from an RNA template by the enzyme reverse transcriptase.
+    cDNA is commonly used in RNA-seq library preparation because it is more stable than RNA and allows the captured transcripts to be amplified and sequenced for gene expression analysis.
 
-역다중화 (Demultiplexing)
-    {term}`바코드 <Barcode>`를 사용하여 어떤 시퀀싱 리드가 어떤 세포에 속하는지 결정하는 과정입니다.
+Demultiplexing
+    The process of determining which sequencing reads belong to which cell using {term}`barcodes <Barcode>`.
 
-방향성 그래프 (Directed graph)
-    방향성 그래프(또는 다이그래프)는 각 간선이 노드 간의 단방향 관계를 나타내는 방향을 갖는 간선(호)으로 연결된 노드(정점) 집합으로 구성된 그래프입니다.
+Directed graph
+    A directed graph (or digraph) is a graph consisting of a set of nodes (vertices) connected by edges (arcs), where each edge has a direction indicating a one-way relationship between nodes.
 
 DNA
-    DNA는 데옥시리보핵산의 약어입니다.
-    유전 정보와 단백질 합성을 위한 지침을 저장하는 유기 화학 물질입니다.
-    DNA는 {term}`RNA`로 전사됩니다.
+    DNA is the acronym of Deoxyribonucleic acid.
+    It is the organic chemical storing hereditary information and instructions for protein synthesis.
+    DNA gets transcribed into {term}`RNA`.
 
-이중체 (Doublets)
-    액적 기반 분석에서 얻은 리드는 RNA 발현이 두 개 이상의 세포(이중체)에서 유래한 반면 단일 세포에 잘못 연관될 수 있습니다.
+Doublets
+    Reads obtained from droplet based assays might be mistakenly associated to a single cell while the RNA expression origins from two or more cells (a doublet).
 
-하류 분석 (Downstream analysis)
-    원시 데이터의 초기 처리 후 수행되는 데이터 분석 단계입니다.
-    scRNA-seq의 맥락에서 이는 정규화, 통합, 필터링, 세포 유형 식별, 궤적 추론 및 발현 역학 연구와 같은 작업을 포함합니다.
+Downstream analysis
+    A phase of data analysis that follows the initial processing of raw data.
+    In the context of scRNA-seq, this includes tasks such as normalization, integration, filtering, cell type identification, trajectory inference, and studying expression dynamics.
 
-탈락 (Dropout)
-    한 세포에서는 관찰되지만 동일한 {term}`세포 유형 <Cell type>`의 다른 세포에서는 관찰되지 않는 낮은 발현을 가진 유전자입니다.
-    탈락의 이유는 일반적으로 세포 내 {term}`mRNA <Messenger RNA (mRNA)>` 발현량이 적고 mRNA 발현의 일반적인 확률성 때문입니다.
-    탈락은 scRNA-seq 데이터가 희소한 이유 중 하나입니다.
+Dropout
+    A gene with low expression that is observed in one cell, but not in other cells of the same {term}`cell type <Cell type>`.
+    The reason for dropouts are commonly low amounts of {term}`mRNA <Messenger RNA (mRNA)>` expression in cells and the general stochasticity of mRNA expression.
+    Dropouts are one of the reasons why scRNA-seq data is sparse.
 
 Drop-seq
-    세포를 나노리터 크기의 수성 액적으로 분리하여 대규모 프로파일링을 가능하게 하는 scRNA-seq 프로토콜입니다.
+    A protocol for scRNA-seq that separates cells into nano-liter sized aqueous droplets enabling large-scale profiling.
 
-편집 거리 (Edit distance)
-    편집 거리(종종 레벤슈타인 거리라고도 함)는 한 문자열을 다른 문자열로 변환하는 데 필요한 최소 작업 수(대체, 삽입, 삭제)를 측정합니다.
+Edit distance
+    Edit distance (often referred to as Levenshtein distance) measures the minimum number of operations (Substitution, Insertion, Deletion) required to transform one string into another.
 
 FASTQ
-    FASTQ 형식으로 저장되는 시퀀싱 리드입니다.
-    FASTQ 파일은 DNA/RNA 서열과 해당 품질 점수를 4줄 형식으로 저장합니다: 식별자, 서열, 선택적 설명 및 ASCII 문자로 인코딩된 품질 점수.
-    그런 다음 FASTQ 파일을 사용하여 관심 참조 유전체에 매핑하여 세포의 유전자 수를 얻습니다.
+    Sequencing reads that are saved in the FASTQ format.
+    A FASTQ file stores DNA/RNA sequences and their corresponding quality scores in a 4-line format: identifier, sequence, optional description, and quality scores encoded in ASCII characters.
+    FASTQ files are then used to map against the reference genome of interest to obtain gene counts for cells.
 
-플로우셀 (Flowcell)
-    DNA 또는 RNA 조각이 시퀀싱되는 시퀀싱 플랫폼에서 사용되는 소모품 장치입니다.
-    DNA 또는 RNA 조각을 캡처하고 고정하는 올리고뉴클레오티드로 코팅된 레인 또는 채널이 있는 유리 또는 폴리머 표면으로 구성됩니다.
-    시퀀싱 중에 이러한 조각은 군집으로 증폭되고 뉴클레오티드 통합 중에 방출되는 형광 신호를 감지하여 서열이 결정됩니다.
-    플로우셀은 수백만 개의 조각을 동시에 시퀀싱할 수 있도록 하여 높은 처리량의 시퀀싱을 가능하게 합니다.
+Flowcell
+    A consumable device used in sequencing platforms where DNA or RNA fragments are sequenced.
+    It consists of a glass or polymer surface with lanes or channels coated with oligonucleotides, which capture and anchor DNA or RNA fragments.
+    During sequencing, these fragments are amplified into clusters, and their sequences are determined by detecting fluorescent signals emitted during nucleotide incorporation.
+    The flowcell enables high-throughput sequencing by allowing millions of fragments to be sequenced simultaneously.
 
-유전자 발현 행렬 (Gene expression matrix)
-    세포(바코드)별 유전자(scverse 생태계) 또는 유전자별 세포(바코드) 행렬로, 세포 값에 카운트를 저장합니다.
+Gene expression matrix
+    A cell (barcode) by gene (scverse ecosystem) or gene by cell (barcode) matrix storing counts in the cell values.
 
-해밍 거리 (Hamming distance)
-    길이가 같은 두 문자열이 다른 위치의 수를 측정합니다.
-    시퀀싱 데이터의 바코드 수정을 포함하여 오류 감지 및 수정에 일반적으로 사용됩니다.
+Hamming distance
+    A measure of the number of positions at which two strings of equal length differ.
+    It is commonly used in error detection and correction, including barcode correction in sequencing data.
 
-결측치 보간 (Imputation)
-    결측값을 일반적으로 인공적인 값으로 대체하는 것입니다.
+Imputation
+    The replacement of missing values with usually artificial values.
 
 Indrop
-    scRNA-seq를 위한 액적 기반 프로토콜입니다.
+    A Droplet based protocol for scRNA-seq.
 
-라이브러리 (Library)
-    시퀀싱 라이브러리라고도 합니다. 시퀀싱 어댑터가 부착된 DNA 조각의 풀입니다.
+Library
+    Also known as sequencing library. A pool of DNA fragments with attached sequencing adapters.
 
-양식 (Modalities)
-    단일 세포 수준에서 측정된 다양한 유형의 생물학적 정보입니다.
-    여기에는 유전자 발현, 염색질 접근성, 표면 단백질, 면역 수용체 서열 및 공간 구성이 포함됩니다.
-    이러한 양식을 결합하면 세포 정체성, 기능 및 상호 작용에 대한 더 완전한 이해를 얻을 수 있습니다.
+Modalities
+    Different types of biological information measured at the single-cell level.
+    These include gene expression, chromatin accessibility, surface proteins, immune receptor sequences, and spatial organization.
+    Combining these modalities provides a more complete understanding of cell identity, function, and interactions.
 
-유전자 좌위 (Locus)
-    특정 서열이나 유전적 특징이 위치하는 유전체 또는 전사체의 특정 위치 또는 영역입니다.
-    시퀀싱에서 유전자 좌위는 유전자, 엑손 또는 유전자 간 영역과 같이 리드 또는 조각의 잠재적 기원을 나타냅니다.
-    유전자 좌위의 정확한 식별은 리드를 매핑하고 데이터의 유전체 또는 전사체 맥락을 이해하는 데 중요합니다.
+Locus
+    Specific position or region on a genome or transcriptome where a particular sequence or genetic feature is located.
+    In sequencing, loci refer to the potential origins of a read or fragment, such as a gene, exon, or intergenic region.
+    Accurate identification of loci is critical for mapping reads and understanding the genomic or transcriptomic context of the data.
 
-전령 RNA (mRNA) (Messenger RNA (mRNA))
-    유전자에서 읽혀 단백질의 청사진 역할을 하는 뉴클레오티드 서열입니다.
+Messenger RNA (mRNA)
+    A nucleotide sequence that has been read from a gene and serves as a blueprint for a protein.
 
 MuData
-    {term}`AnnData`를 기반으로 하는 다중 모드 주석 데이터 행렬을 위한 Python 패키지입니다.
-    다중 모드 데이터를 위한 scverse 생태계의 기본 데이터 구조입니다.
+    A Python package for multimodal annotated data matrices that builds on {term}`AnnData`.
+    The primary data structure in the scverse ecosystem for multimodal data.
 
 Muon
-    scverse에서 제공하는 Python의 다중 모드 단일 세포 분석을 위한 Python 패키지입니다.
+    A Python package for multi-modal single-cell analysis in Python by scverse.
 
-음이항 분포 (Negative binomial distribution)
-    지정된 실패 횟수 이전에 독립적이고 동일하게 분포된 베르누이 시행 시퀀스에서 성공 횟수를 모델링하는 이산 확률 분포입니다.
+Negative binomial distribution
+    A discrete probability distribution that models the number of successes in a sequence of independent and identically distributed Bernoulli trials before a specified number of failures.
 
 PCR
-    중합효소 연쇄 반응(PCR)은 수십억 개의 사본을 만들기 위해 서열을 증폭하는 방법입니다.
-    PCR은 증폭할 게놈 부분을 선택하기 위해 짧은 합성 {term}`DNA` 조각인 프라이머를 필요로 하며, 그 후 표적 부분을 증폭하기 위해 여러 번의 {term}`DNA` 합성을 필요로 합니다.
+    Polymercase chain reaction (PCR) is a method to amplify sequences to create billions of copies.
+    PCR requires primers, which are short synthetic {term}`DNA` fragments, to select the genome segments to be amplified and subsequently multiple rounds of {term}`DNA` synthesis to amplify the targeted segments.
 
-파이프라인 (Pipeline)
-    종종 워크플로우라고도 합니다.
-    일반적으로 순서대로 실행되는 미리 지정된 단계의 선택입니다.
+Pipeline
+    Also often times denoted as workflow.
+    A pre-specified selection of steps that are commonly executed in order.
 
-푸아송 분포 (Poisson distribution)
-    알려진 일정한 평균 속도로 이벤트가 독립적으로 발생하는 고정된 시간 또는 공간 간격에서 지정된 수의 이벤트가 발생할 확률을 나타내는 이산 확률 분포입니다.
+Poisson distribution
+    Discrete probability distribution denoting the probability of a specified number of events occurring in a fixed interval of time or space with the events occurring independently at a known constant mean rate.
 
-프로모터 (Promoter)
-    단백질(예: RNA 중합효소 및 전사 인자)이 결합하여 전사를 시작하고 제어하는 DNA 서열입니다.
+Promoter
+    Sequence of DNA to which proteins bind (e.g. RNA polymerase and transcription factors) to initiate and control transcription.
 
-의사 시간 (Pseudotime)
-    세포의 전이 과정을 반영하는 잠재적이고 따라서 관찰되지 않는 차원입니다.
-    의사 시간은 일반적으로 실제 시간 이벤트와 관련이 있지만 반드시 동일하지는 않습니다.
+Pseudotime
+    Latent and therefore unobserved dimension reflecting cells' progression through transitions.
+    Pseudotime is usually related to real time events, but not necessarily the same.
 
 RNA
-    리보핵산(RNA)은 모든 살아있는 세포에 존재하는 단일 가닥 핵산으로 유전자 발현을 인코딩하고 조절합니다.
-    DNA와 달리 RNA는 유전적 지침을 전달하는 메신저({term}`mRNA <Messenger RNA (mRNA)>`), 구조적 또는 촉매적 구성 요소(rRNA, snRNA) 또는 유전자 발현 조절자(miRNA, siRNA, lncRNA) 역할을 하는 등 매우 역동적일 수 있습니다.
-    RNA는 전사, 번역 및 세포 반응에서 중심적인 역할을 하므로 유전자 조절, 발달 및 질병을 이해하는 데 필수적입니다.
+    Ribonucleic acid (RNA) is a single-stranded nucleic acid present in all living cells that encodes and regulates gene expression.
+    Unlike DNA, RNA can be highly dynamic, acting as a messenger ({term}`mRNA <Messenger RNA (mRNA)>`) to carry genetic instructions, a structural or catalytic component (rRNA, snRNA), or a regulator of gene expression (miRNA, siRNA, lncRNA).
+    RNA plays a central role in transcription, translation, and cellular responses, making it essential for understanding gene regulation, development, and disease.
 
-RNA 속도 (RNA velocity)
-    RNA 속도는 단일 세포 RNA 시퀀싱 데이터에서 미성숙({term}`mRNA <Messenger RNA (mRNA)>` 이전) 전사체와 성숙(성숙) mRNA 전사체의 비율을 비교하여 유전자 발현의 변화율을 측정합니다.
-    이 비율은 유전자가 활발하게 전사되고 있는지(발현 증가) 또는 분해되고 있는지(발현 감소)에 대한 통찰력을 제공하여 연구자들이 세포의 미래 상태를 예측할 수 있도록 합니다.
-    이 개념은 미성숙 mRNA 신호가 새로운 전사를 나타내는 반면 성숙 mRNA 수준은 정상 상태 발현을 반영하여 세포 궤적 및 발달 역학을 추론할 수 있다는 사실을 활용합니다.
+RNA velocity
+    RNA velocity measures the rate of change in gene expression by comparing the ratio of unspliced (pre-{term}`mRNA <Messenger RNA (mRNA)>`) to spliced (mature) mRNA transcripts in single-cell RNA sequencing data.
+    This ratio provides insight into whether genes are being actively transcribed (increasing expression) or degraded (decreasing expression), allowing researchers to predict the future state of cells.
+    The concept leverages the fact that pre-mRNA signals indicate new transcription while mature mRNA levels reflect steady-state expression, enabling inference of cellular trajectory and developmental dynamics.
 
 SAM
-    SAM(Sequence Alignment/Map) 파일은 시퀀싱 리드가 참조 유전체에 어떻게 매핑되는지를 보여주는 시퀀싱 정렬 데이터를 저장하는 탭으로 구분된 텍스트 파일입니다.
-    SAM 파일의 각 줄에는 리드 서열, 염기 품질 점수, 매핑 위치 및 매핑 품질을 포함하여 단일 리드 정렬에 대한 정보가 포함되어 있습니다.
+    SAM (Sequence Alignment/Map) files are tab-delimited text files that store sequencing alignment data, showing how sequencing reads map to a reference genome.
+    Each line in a SAM file contains information about a single read alignment, including the read sequence, base quality scores, mapping position, and mapping quality.
 
 Scanpy
-    scverse에서 제공하는 Python의 단일 세포 분석을 위한 Python 패키지입니다.
+    A Python package for single-cell analysis in Python by scverse.
 
 Scverse
-    scanpy, muon 및 scvi-tools와 같은 계산 분석 도구를 유지 관리하는 생명 과학 분야의 기본 단일 세포 도구를 위한 컨소시엄입니다.
-    참조: https://scverse.org/
+    A consortium for fundamental single-cell tools in the life sciences that are maintaining computational analysis tools like scanpy, muon and scvi-tools.
+    See: https://scverse.org/
 
-시퀀싱 (Sequencing)
-    시퀀싱은 DNA 뉴클레오티드의 순서를 해독하는 과정입니다.
+Sequencing
+    Sequencing is the process of deciphering the order of DNA nucleotides.
 
-신호 대 잡음비 (Signal-to-noise ratio)
-    배경 잡음에 대한 신호의 명확성을 측정하는 척도입니다.
-    시퀀싱에서 신호는 시퀀싱되는 DNA 또는 RNA 분자에서 파생된 감지 가능한 정보를 나타내는 반면, 잡음은 실제 데이터를 가리거나 왜곡할 수 있는 무작위 오류 또는 원치 않는 신호를 포함합니다.
-    높은 신호 대 잡음비(SNR)는 신호가 잡음에 비해 강하고 신뢰할 수 있음을 나타내어 더 나은 데이터 품질을 제공합니다.
-    반대로 낮은 SNR은 잡음이 시퀀싱 결과의 정확도를 방해하거나 감소시킬 수 있음을 의미합니다.
+Signal-to-noise ratio
+    A measure of the clarity of a signal relative to background noise.
+    In sequencing, the signal represents the detectable information derived from the DNA or RNA molecules being sequenced, while the noise includes random errors or unwanted signals that can obscure or distort the true data.
+    A high signal-to-noise ratio (SNR) indicates that the signal is strong and reliable compared to the noise, resulting in better data quality.
+    Conversely, a low SNR means the noise may interfere with or reduce the accuracy of the sequencing results.
 
-스파이크인 RNA (Spike-in RNA)
-    RNA-seq의 RNA 혼성화 단계에서 측정을 보정하기 위한 알려진 서열 및 양의 RNA 전사체입니다.
+Spike-in RNA
+    RNA transcripts of known sequence and quantity to calibrate measurements in RNA hybridization steps for RNA-seq.
 
-스플라이스 접합부 (Splice Junctions)
-    RNA 스플라이싱 동안 인트론이 제거되고 엑손이 성숙 RNA 전사체에서 함께 결합되는 위치입니다.
-    이러한 접합부는 특정 뉴클레오티드 서열에서 발생하며 기능적 {term}`mRNA <Messenger RNA (mRNA)>`의 적절한 조립에 중요합니다.
+Splice Junctions
+    Locations where introns are removed, and exons are joined together in a mature RNA transcript during RNA splicing.
+    These junctions occur at specific nucleotide sequences and are critical for the proper assembly of functional {term}`mRNA <Messenger RNA (mRNA)>`.
 
-궤적 추론 (Trajectory inference)
-    의사 시간 순서 지정이라고도 합니다.
-    유사성 또는 다른 수단으로 세포를 정렬하여 동적 프로세스를 계산적으로 복구하는 것입니다.
+Trajectory inference
+    Also known as pseudotemporal ordering.
+    The computational recovery of dynamic processes by ordering cells by similarity or other means.
 
-고유 분자 식별자 (UMI) (Unique Molecular Identifier (UMI))
-    샘플 라이브러리의 각 분자를 고유하게 태그하는 특수한 유형의 분자 바코드입니다.
-    예를 들어, 이를 통해 PCR 복제율을 추정할 수 있으며({term}`증폭 편향 <Amplification bias>` 참조), 이는 오류 수정으로 이어지고 정확도를 높입니다.
+Unique Molecular Identifier (UMI)
+    A special type of molecular barcode that uniquely tags each molecule in a sample library.
+    This, for example, enables the estimation of PCR duplication rates (see {term}`amplification bias <Amplification bias>`), which leads to error correction and increases accuracy.
 
-미번역 영역 (UTR) (Untranslated Region (UTR))
-    전사되지만 단백질로 번역되지 않는 {term}`mRNA <Messenger RNA (mRNA)>` 전사체의 일부입니다.
-    UTR은 코딩 서열의 양쪽 끝에 위치합니다.
+Untranslated Region (UTR)
+    A segment of an {term}`mRNA <Messenger RNA (mRNA)>` transcript that is transcribed but not translated into protein.
+    UTRs are located at both ends of the coding sequence.
 ```

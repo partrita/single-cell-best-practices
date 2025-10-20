@@ -1,266 +1,266 @@
 (raw-proc)=
 
-# 원시 데이터 처리
+# Raw data processing
 
 (introduction-raw-data-processing-key-takeaway-1)=
 
-## 동기
+## Motivation
 
-단일 세포 {term}`시퀀싱`에서의 원시 데이터 처리는 시퀀싱 장비의 출력(소위 레인-디멀티플렉싱된 {term}`FASTQ` 파일)을 카운트 행렬과 같이 즉시 분석 가능한 표현으로 변환합니다.
-이 행렬은 각 정량화된 세포마다 각 유전자에서 유래한 고유 분자의 추정된 수를 나타내며, 때로는 각 분자의 추정된 스플라이싱 상태에 따라 분류됩니다({numref}`raw-proc-fig-overview`).
+Raw data processing in single-cell {term}`sequencing` converts sequencing machine output (so-called lane-demultiplexed {term}`FASTQ` files) into readily analyzable representations such as a count matrix.
+This matrix represents the estimated number of distinct molecules derived from each gene per quantified cell, sometimes categorized by the inferred splicing status of each molecule ({numref}`raw-proc-fig-overview`).
 
 :::{figure-md} raw-proc-fig-overview
-<img src="../_static/images/raw_data_processing/overview_raw_data_processing.jpg" alt="챕터 개요" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/overview_raw_data_processing.jpg" alt="Chapter Overview" class="bg-primary mb-1" width="800px">
 
-이 챕터에서 논의되는 주제 개요. 그림에서 "txome"은 전사체를 의미합니다.
+An overview of the topics discussed in this chapter. In the plot, "txome" stands for transcriptome.
 :::
 
-카운트 행렬은 세포 유형 식별 또는 발달 경로 추론을 포함한 광범위한 scRNA-seq 분석 {cite}`Zappia2021_raw`의 기초입니다.
-신뢰할 수 있는 {term}`다운스트림 분석 <Downstream analysis>`을 위해서는 견고하고 정확한 카운트 행렬이 필수적입니다.
-이 단계에서의 오류는 놓친 통찰력이나 데이터의 왜곡된 신호에 기반한 잘못된 결론과 발견으로 이어질 수 있습니다.
-입력(FASTQ 파일)과 원하는 출력(카운트 행렬)의 간단한 특성에도 불구하고 원시 데이터 처리에는 몇 가지 기술적인 과제가 있습니다.
+The count matrix is the foundation for a wide range of scRNA-seq analyses {cite}`Zappia2021_raw`, including cell type identification or developmental trajectory inference.
+A robust and accurate count matrix is essential for reliable {term}`downstream analyses <Downstream analysis>`.
+Errors at this stage can lead to invalid conclusions and discoveries based on missed insights, or distorted signals in the data.
+Despite the straightforward nature of the input (FASTQ files) and the desired output (count matrix), raw data processing presents several technical challenges.
 
-이 섹션에서는 원시 데이터 처리의 주요 단계에 중점을 둡니다.
+In this section, we focus on key steps of raw data processing:
 
-1. 리드 정렬/매핑
-2. 세포 바코드(CB) 식별 및 보정
-3. {term}`고유 분자 식별자(UMI) <Unique Molecular Identifier (UMI)>`를 통한 분자 수 추정
+1. Read alignment/mapping
+2. Cell barcode (CB) identification and correction
+3. Estimation of molecule counts through {term}`unique molecular identifiers (UMIs) <Unique Molecular Identifier (UMI)>`
 
-또한 각 단계에 관련된 과제와 절충점에 대해서도 논의합니다.
+We also discuss the challenges and trade-offs involved in each step.
 
-```{admonition} 이전 단계에 대한 참고 사항
+```{admonition} A note on preceding steps
 
-원시 데이터 처리의 시작점은 다소 임의적입니다. 이 논의에서는 레인-디멀티플렉싱된 FASTQ 파일을 _원시_ 입력으로 취급합니다.
-그러나 이러한 파일은 베이스 콜링 및 베이스 품질 추정과 같은 이전 단계에서 파생되며, 이는 다운스트림 처리에 영향을 줄 수 있습니다.
-예를 들어, 베이스 콜링 오류 및 인덱스 호핑 {cite}`farouni2020model`은 FASTQ 데이터에 부정확성을 유발할 수 있습니다.
-이러한 문제는 계산적 접근 방식 {cite}`farouni2020model`이나 [이중 인덱싱](https://www.10xgenomics.com/blog/sequence-with-confidence-understand-index-hopping-and-how-to-resolve-it)과 같은 실험적 개선을 통해 완화될 수 있습니다.
+The starting point for raw data processing is somewhat arbitrary. For this discussion, we treat lane-demultiplexed FASTQ files as the _raw_ input.
+However, these files are derived from earlier steps, such as base calling and base quality estimation, which can influence downstream processing.
+For example, base-calling errors and index hopping {cite}`farouni2020model` can introduce inaccuracies in FASTQ data.
+These issues can be mitigated with computational approaches {cite}`farouni2020model` or experimental enhancements like [dual indexing](https://www.10xgenomics.com/blog/sequence-with-confidence-understand-index-hopping-and-how-to-resolve-it).
 
-여기서는 업스트림 프로세스에 대해 자세히 다루지 않고, 예를 들어 [적절한 도구](https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/using/bcl2fastq-direct)를 통해 BCL 파일에서 파생된 FASTQ 파일을 고려 중인 원시 입력으로 간주합니다.
+Here, we do not delve into the upstream processes, but consider the FASTQ files, derived from, e.g., BCL files via [appropriate tools](https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/using/bcl2fastq-direct), as the raw input under consideration.
 ```
 
-## 원시 데이터 품질 관리
+## Raw data quality control
 
-원시 FASTQ 파일을 얻은 후에는 시퀀싱 리드의 품질을 평가하는 것이 중요합니다.
-이를 수행하는 빠르고 효과적인 방법은 `FastQC`와 같은 품질 관리(QC) 도구를 사용하는 것입니다.
-`FastQC`는 각 FASTQ 파일에 대한 상세한 보고서를 생성하여 라이브러리 준비 또는 시퀀싱에서 발생할 수 있는 잠재적인 문제를 식별하는 데 도움이 되는 품질 점수, 염기 구성 및 기타 통계와 같은 주요 메트릭을 요약합니다.
+After obtaining raw FASTQ files, it is important to evaluate the quality of the sequencing reads.
+A quick and effective way to perform this is by using quality control (QC) tools like `FastQC`.
+`FastQC` generates a detailed report for each FASTQ file, summarizing key metrics such as quality scores, base content, and other statistics that help identify potential issues arising from library preparation or sequencing.
 
-많은 최신 단일 세포 데이터 처리 도구에는 시퀀스의 N 함량 평가 또는 매핑된 리드의 비율과 같은 일부 내장된 품질 검사가 포함되어 있지만, 독립적인 QC 검사를 실행하는 것이 여전히 좋은 관행입니다.
+While many modern single-cell data processing tools include some built-in quality checks—such as evaluating the N content of sequences or the fraction of mapped reads - it is still good practice to run an independent QC check.
 
-일반적인 `FastQC` 보고서가 어떻게 생겼는지 관심 있는 독자를 위해, 다음 토글 콘텐츠에서는 `FastQC` [매뉴얼 웹페이지](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)에서 제공하는 [고품질](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/good_sequence_short_fastqc.html) 및 [저품질](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/bad_sequence_fastqc.html) Illumina 데이터의 예제 보고서와 [MSU의 RTSF](https://rtsf.natsci.msu.edu/genomics/technical-documents/fastqc-tutorial-and-faq.aspx), [HBC 교육 프로그램](https://hbctraining.github.io/Intro-to-rnaseq-hpc-salmon/lessons/qc_fastqc_assessment.html), [QC Fail 웹사이트](https://sequencing.qcfail.com/software/fastqc/)의 튜토리얼 및 설명을 사용하여 `FastQC` 보고서의 모듈을 시연합니다.
-이러한 튜토리얼은 단일 세포 데이터용으로 명시적으로 만들어지지는 않았지만, 아래에 설명된 몇 가지 주의 사항을 제외하고 많은 결과가 여전히 단일 세포 데이터와 관련이 있습니다.
+For readers interested in what a typical `FastQC` report looks like, in the following toggle content, example reports for both [high-quality](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/good_sequence_short_fastqc.html) and [low-quality](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/bad_sequence_fastqc.html) Illumina data provided by the `FastQC` [manual webpage](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/), along with the tutorials and descriptions from [the RTSF at MSU](https://rtsf.natsci.msu.edu/genomics/technical-documents/fastqc-tutorial-and-faq.aspx), [the HBC training program](https://hbctraining.github.io/Intro-to-rnaseq-hpc-salmon/lessons/qc_fastqc_assessment.html), and [the QC Fail website](https://sequencing.qcfail.com/software/fastqc/) are used to demonstrate the modules in the `FastQC` report.
+Although these tutorials are not explicitly made for single-cell data, many of the results are still relevant for single-cell data, with a few caveats described below.
 
-토글 섹션에서 특별히 언급된 경우를 제외하고 모든 그래프는 `FastQC` [매뉴얼 웹페이지](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)의 예제 보고서에서 가져왔습니다.
+In the toggle section, all graphs, except specifically mentioned, are taken from the example reports on the `FastQC` [manual webpage](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/).
 
-FastQC 보고서의 많은 QC 메트릭은 유전자 전사체에서 파생된 생물학적 리드에 대해서만 가장 의미가 있다는 점에 유의하는 것이 중요합니다.
-10x Chromium v2 및 v3와 같은 단일 세포 데이터셋의 경우, 이는 일반적으로 전사체 유래 서열을 포함하는 리드 2(파일 이름에 `R2`가 포함된 파일)에 해당합니다.
-반면, 바코드 및 UMI 서열을 포함하는 기술적 리드는 종종 생물학적으로 일반적인 서열 또는 GC 함량을 나타내지 않습니다.
-그러나 `N` 염기 호출 비율과 같은 특정 메트릭은 모든 리드에 대해 여전히 관련이 있습니다.
+It is important to note that many QC metrics in FastQC reports are most meaningful only for biological reads—those derived from gene transcripts.
+For single-cell datasets, such as 10x Chromium v2 and v3, this typically corresponds to read 2 (the files containing `R2` in their filename), which contain transcript-derived sequences.
+In contrast, technical reads, which contain barcode and UMI sequences, often do not exhibit biologically typical sequence or GC content.
+However, certain metrics, like the fraction of `N` base calls, are still relevant for all reads.
 
-```{dropdown} 예제 FastQC 보고서 및 튜토리얼
+```{dropdown} Example FastQC Reports and Tutorials
 
-**0. 요약**
+**0. Summary**
 
-HTML 보고서 왼쪽의 요약 패널에는 모듈 이름과 함께 모듈 결과에 대한 빠른 평가를 제공하는 기호가 표시됩니다.
-그러나 `FastQC`는 모든 시퀀싱 플랫폼과 생물학적 물질에 대해 균일한 임계값을 적용합니다.
-결과적으로 고품질 데이터에 대해 경고(주황색 느낌표) 또는 실패(빨간색 십자)가 나타날 수 있는 반면, 의심스러운 데이터는 통과(녹색 체크 표시)를 받을 수 있습니다.
-따라서 데이터 품질에 대한 결론을 내리기 전에 각 모듈을 신중하게 검토해야 합니다.
+The summary panel on the left side of the HTML report displays the module names along with symbols that provide a quick assessment of the module results.
+However, `FastQC` applies uniform thresholds across all sequencing platforms and biological materials.
+As a result, warnings (orange exclamation marks) or failures (red crosses) may appear for high-quality data, while questionable data might receive passes (green ticks).
+Therefore, each module should be carefully reviewed before drawing conclusions about data quality.
 
 :::{figure-md} raw-proc-fig-fastqc-summary
-<img src="../_static/images/raw_data_processing/fastqc_example/summary.jpg" alt="요약" class="bg-primary mb-1" width="300px">
+<img src="../_static/images/raw_data_processing/fastqc_example/summary.jpg" alt="Summary" class="bg-primary mb-1" width="300px">
 
-나쁜 예의 요약 패널.
+The summary panel of a bad example.
 :::
 
-**1. 기본 통계**
+**1. Basic statistics**
 
-기본 통계 모듈은 파일 이름, 총 시퀀스 수, 품질이 낮은 시퀀스 수, 시퀀스 길이 및 모든 시퀀스의 모든 염기에 대한 전체 GC 함량(%GC)을 포함하여 입력 FASTQ 파일에 대한 주요 정보 및 통계 개요를 제공합니다.
-고품질 단일 세포 데이터는 일반적으로 품질이 낮은 시퀀스가 거의 없으며 균일한 시퀀스 길이를 나타냅니다.
-또한 GC 함량은 시퀀싱된 종의 게놈 또는 전사체의 예상 GC 함량과 일치해야 합니다.
+The basic statistics module provides an overview of key information and statistics for the input FASTQ file, including the filename, total number of sequences, number of poor-quality sequences, sequence length, and the overall GC content (%GC) across all bases in all sequences.
+High-quality single-cell data typically have very few poor-quality sequences and exhibit a uniform sequence length.
+Additionally, the GC content should align with the expected GC content of the genome or transcriptome of the sequenced species.
 
 :::{figure-md} raw-proc-fig-fastqc-basic-statistics
-<img src="../_static/images/raw_data_processing/fastqc_example/basic_statistics.jpg" alt="기본 통계" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/fastqc_example/basic_statistics.jpg" alt="Basic Statistics" class="bg-primary mb-1" width="800px">
 
-좋은 기본 통계 보고서 예.
+A good basic statistics report example.
 :::
 
-**2. 염기당 시퀀스 품질**
+**2. Per base sequence quality**
 
-염기당 시퀀스 품질 보기는 리드의 각 위치에 대한 상자-수염 그림을 표시합니다.
-x축은 리드 내의 위치를 나타내고 y축은 품질 점수를 보여줍니다.
+The per-base sequence quality view displays a box-and-whisker plot for each position in the read.
+The x-axis represents the positions within the read, while the y-axis shows the quality scores.
 
-고품질 단일 세포 데이터의 경우, 사분위수 범위의 품질 점수를 나타내는 노란색 상자는 녹색 영역(양호한 품질 호출을 나타냄) 내에 있어야 합니다.
-마찬가지로, 분포의 10번째 및 90번째 백분위수를 나타내는 수염도 녹색 영역 내에 있어야 합니다.
-시퀀싱-바이-합성 방법의 특징인 {term}`신호 대 잡음비` 감소로 인해 리드 길이를 따라 품질 점수가 점진적으로 떨어지는 것이 일반적이며, 마지막 위치의 일부 염기 호출은 주황색 영역(합리적인 품질)에 속합니다.
-그러나 상자는 빨간색 영역(품질이 낮은 호출)으로 확장되어서는 안 됩니다.
+For high-quality single-cell data, the yellow boxes—representing the interquartile range of quality scores—should fall within the green area (indicating good quality calls).
+Similarly, the whiskers, which represent the 10th and 90th percentiles of the distribution, should also remain within the green area.
+It is common to observe a gradual drop in quality scores along the length of the read, with some base calls at the last positions falling into the orange area (reasonable quality) due to a decreasing {term}`signal-to-noise ratio`, a characteristic of sequencing-by-synthesis methods.
+However, the boxes should not extend into the red area (poor quality calls).
 
-품질이 낮은 호출이 관찰되면 품질 트리밍이 필요할 수 있습니다. 시퀀싱 오류 프로파일에 대한 [자세한 설명](https://hbctraining.github.io/Intro-to-rnaseq-hpc-salmon/lessons/qc_fastqc_assessment.html)은 [HBC 교육 프로그램](https://hbctraining.github.io/main/)에서 찾을 수 있습니다.
+If poor-quality calls are observed, quality trimming may be necessary. [A more detailed explanation](https://hbctraining.github.io/Intro-to-rnaseq-hpc-salmon/lessons/qc_fastqc_assessment.html) of sequencing error profiles can be found in the [HBC training program](https://hbctraining.github.io/main/).
 
 :::{figure-md} raw-proc-fig-fastqc-per-read-sequence-quality
-<img src="../_static/images/raw_data_processing/fastqc_example/per_read_sequence_quality.jpg" alt="리드당 시퀀스 품질" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/fastqc_example/per_read_sequence_quality.jpg" alt="per read sequence quality" class="bg-primary mb-1" width="800px">
 
-좋은(왼쪽) 및 나쁜(오른쪽) 리드당 시퀀스 품질 그래프.
+A good (left) and a bad (right) per-read sequence quality graph.
 :::
 
-**3. 타일당 시퀀스 품질**
+**3. Per tile sequence quality**
 
-Illumina 라이브러리를 사용하여 타일당 시퀀스 품질 플롯은 각 {term}` <Flowcell>` [타일](https://www.biostars.org/p/9461090/)(미니어처 이미징 영역)에 걸쳐 리드에 대한 평균 품질과의 편차를 강조 표시합니다.
-플롯은 색상 그래디언트를 사용하여 편차를 나타내며, 따뜻한 색상은 더 큰 편차를 나타냅니다.
-고품질 데이터는 일반적으로 플롯 전체에 균일한 파란색을 표시하여 플로우셀의 모든 타일에 걸쳐 일관된 품질을 나타냅니다.
+Using an Illumina library, the per-tile sequence quality plot highlights deviations from the average quality for reads across each {term}` <Flowcell>` [tile](https://www.biostars.org/p/9461090/)(miniature imaging areas of the {term}`flowcell <Flowcell>`).
+The plot uses a color gradient to represent deviations, where warmer colors indicate larger deviations.
+High-quality data typically display a uniform blue color across the plot, indicating consistent quality across all tiles of the flowcell.
 
-특정 영역에 따뜻한 색상이 나타나면 플로우셀의 일부만 품질이 좋지 않았음을 나타냅니다.
-이는 시퀀싱 중 플로우셀을 통과하는 기포나 플로우셀 레인 내의 얼룩 및 파편과 같은 일시적인 문제로 인해 발생할 수 있습니다.
-추가 조사를 위해 [QC Fail](https://sequencing.qcfail.com/articles/position-specific-failures-of-flowcells/) 및 `FastQC` 설명서에 제공된 [경고의 일반적인 이유](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/3%20Analysis%20Modules/12%20Per%20Tile%20Sequence%20Quality.html)와 같은 리소스를 참조하십시오.
+If warm colors appear in certain areas, it suggests that only part of the flowcell experienced poor quality.
+This could result from transient issues during sequencing, such as bubbles passing through the flowcell or smudges and debris within the flowcell lane.
+For further investigation, consult resources like [QC Fail](https://sequencing.qcfail.com/articles/position-specific-failures-of-flowcells/) and the [common reasons for warnings](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/3%20Analysis%20Modules/12%20Per%20Tile%20Sequence%20Quality.html) provided in the `FastQC` manual.
 
 :::{figure-md} raw-proc-fig-fastqc-per-tile-sequence-quality
-<img src="../_static/images/raw_data_processing/fastqc_example/per_tile_sequence_quality.jpg" alt="타일당 시퀀스 품질" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/fastqc_example/per_tile_sequence_quality.jpg" alt="per tile sequence quality" class="bg-primary mb-1" width="800px">
 
-좋은(왼쪽) 및 나쁜(오른쪽) 타일당 시퀀스 품질 보기.
+A good (left) and a bad (right) per tile sequence quality view.
 :::
 
-**4. 시퀀스당 품질 점수**
+**4. Per sequence quality scores**
 
-시퀀스당 품질 점수 플롯은 파일의 각 리드에 대한 평균 품질 점수 분포를 표시합니다.
-x축은 평균 품질 점수를 나타내고 y축은 각 점수의 빈도를 보여줍니다.
-고품질 데이터의 경우 플롯은 스케일의 고품질 끝 근처에 단일 피크를 가져야 합니다.
-추가 피크가 나타나면 품질 문제가 있는 리드의 하위 집합을 나타낼 수 있습니다.
+The per-sequence quality score plot displays the distribution of average quality scores for each read in the file.
+The x-axis represents the average quality scores, while the y-axis shows the frequency of each score.
+For high-quality data, the plot should have a single peak near the high-quality end of the scale.
+If additional peaks appear, it may indicate a subset of reads with quality issues.
 
 :::{figure-md} raw-proc-fig-fastqc-per-sequence-quality-scores
-<img src="../_static/images/raw_data_processing/fastqc_example/per_sequence_quality_scores.jpg" alt="시퀀스당 품질 점수" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/fastqc_example/per_sequence_quality_scores.jpg" alt="per sequence quality scores" class="bg-primary mb-1" width="800px">
 
-좋은(왼쪽) 및 나쁜(오른쪽) 시퀀스당 품질 점수 플롯.
+A good (left) and a bad (right) per sequence quality score plot.
 :::
 
-**5. 염기당 시퀀스 함량**
+**5. Per base sequence content**
 
-염기당 시퀀스 함량 플롯은 파일의 모든 리드에 걸쳐 각 염기 위치에서 호출된 각 뉴클레오티드(A, T, G, C)의 백분율을 보여줍니다.
-단일 세포 데이터의 경우 리드 시작 부분에서 변동이 관찰되는 것이 일반적입니다.
-이는 초기 염기가 종종 완벽하게 무작위적이지 않은 프라이밍 부위의 시퀀스를 나타내기 때문에 발생합니다.
-[QC Fail 웹사이트](https://sequencing.qcfail.com/articles/positional-sequence-bias-in-random-primed-libraries/)에 언급된 바와 같이 `FastQC`가 경고 또는 실패로 플래그를 지정할 수 있지만 RNA-seq 라이브러리에서 흔히 발생하는 현상입니다.
+The per-base sequence content plot shows the percentage of each nucleotide (A, T, G, and C) called at each base position across all reads in the file.
+For single-cell data, it is common to observe fluctuations at the start of the reads.
+This occurs because the initial bases represent the sequence of the priming sites, which are often not perfectly random.
+This is a frequent occurrence in RNA-seq libraries, even though `FastQC` may flag it with a warning or failure, as noted on the [QC Fail website](https://sequencing.qcfail.com/articles/positional-sequence-bias-in-random-primed-libraries/).
 
 :::{figure-md} raw-proc-fig-fastqc-per-base-sequence-content
-<img src="../_static/images/raw_data_processing/fastqc_example/per_base_sequence_content.jpg" alt="염기당 시퀀스 함량" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/fastqc_example/per_base_sequence_content.jpg" alt="per base sequence content" class="bg-primary mb-1" width="800px">
 
-좋은(왼쪽) 및 나쁜(오른쪽) 염기당 시퀀스 함량 플롯.
+A good (left) and bad (right) per base sequence content plot.
 :::
 
-**6. 시퀀스당 GC 함량**
+**6. Per sequence GC content**
 
-시퀀스당 GC 함량 플롯은 모든 리드에 걸친 GC 함량 분포(빨간색)를 이론적 분포(파란색)와 비교하여 표시합니다.
-관찰된 분포의 중심 피크는 전사체의 전체 GC 함량과 일치해야 합니다.
-그러나 관찰된 분포는 전사체의 GC 함량과 게놈의 예상 GC 분포 간의 차이로 인해 이론적인 분포보다 넓거나 좁게 나타날 수 있습니다.
-이러한 변형은 일반적이며 데이터가 허용 가능하더라도 `FastQC`에서 경고 또는 실패를 유발할 수 있습니다.
+The per-sequence GC content plot displays the GC content distribution across all reads (in red) compared to a theoretical distribution (in blue).
+The central peak of the observed distribution should align with the overall GC content of the transcriptome.
+However, the observed distribution may appear wider or narrower than the theoretical one due to differences between the transcriptome's GC content and the genome's expected GC distribution.
+Such variations are common and may trigger a warning or failure in `FastQC`, even if the data is acceptable.
 
-그러나 이 플롯에서 복잡하거나 불규칙한 분포는 종종 라이브러리의 오염을 나타냅니다.
-전사체학에서 GC 함량을 해석하는 것이 어려울 수 있다는 점에 유의하는 것도 중요합니다.
-예상 GC 분포는 전사체의 서열 구성뿐만 아니라 일반적으로 사전에 알려지지 않은 샘플의 유전자 발현 수준에 따라 달라집니다.
-결과적으로 RNA-seq 데이터에서 이론적 분포와의 약간의 편차는 드문 일이 아닙니다.
+A complex or irregular distribution in this plot, however, often indicates contamination in the library.
+It is also important to note that interpreting GC content in transcriptomics can be challenging.
+The expected GC distribution depends not only on the sequence composition of the transcriptome but also on gene expression levels in the sample, which are typically unknown beforehand.
+As a result, some deviation from the theoretical distribution is not unusual in RNA-seq data.
 
 :::{figure-md} raw-proc-fig-fastqc-per-sequence-gc-content
-<img src="../_static/images/raw_data_processing/fastqc_example/per_sequence_gc_content.jpg" alt="시퀀스당 GC 함량" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/fastqc_example/per_sequence_gc_content.jpg" alt="Per Sequence GC Content" class="bg-primary mb-1" width="800px">
 
-좋은(왼쪽) 및 나쁜(오른쪽) 시퀀스당 GC 함량 플롯.
-왼쪽 플롯은 [MSU의 RTSF](https://rtsf.natsci.msu.edu/genomics/technical-documents/fastqc-tutorial-and-faq.aspx)에서 가져온 것입니다.
-오른쪽 플롯은 [HBC 교육 프로그램](https://hbctraining.github.io/Intro-to-rnaseq-hpc-salmon/lessons/qc_fastqc_assessment.html)에서 가져온 것입니다.
+A good (left) and a bad (right) per sequence GC content plot.
+The plot on the left is from [the RTSF at MSU](https://rtsf.natsci.msu.edu/genomics/technical-documents/fastqc-tutorial-and-faq.aspx).
+The plot on the right is taken from [the HBC training program](https://hbctraining.github.io/Intro-to-rnaseq-hpc-salmon/lessons/qc_fastqc_assessment.html).
 :::
 
-**7. 염기당 N 함량**
+**7. Per base N content**
 
-염기당 N 함량 플롯은 각 위치의 염기 중 ``N``으로 호출된 백분율을 표시하며, 이는 시퀀서가 특정 뉴클레오티드를 할당할 충분한 신뢰도가 부족했음을 나타냅니다.
-고품질 라이브러리에서는 ``N`` 함량이 리드의 전체 길이에 걸쳐 일관되게 0 또는 0에 가깝게 유지되어야 합니다.
-눈에 띄는 0이 아닌 ``N`` 함량은 시퀀싱 품질 또는 라이브러리 준비에 문제가 있음을 나타낼 수 있습니다.
+The per-base N content plot displays the percentage of bases at each position that were called as ``N``, indicating that the sequencer lacked sufficient confidence to assign a specific nucleotide.
+In a high-quality library, the ``N`` content should remain consistently at or near zero across the entire length of the reads.
+Any noticeable non-zero ``N`` content may indicate issues with sequencing quality or library preparation.
 
 
 :::{figure-md} raw-proc-fig-fastqc-per-base-n-content
-<img src="../_static/images/raw_data_processing/fastqc_example/per_base_n_content.jpg" alt="염기당 N 함량" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/fastqc_example/per_base_n_content.jpg" alt="Per Base N Content" class="bg-primary mb-1" width="800px">
 
-좋은(왼쪽) 및 나쁜(오른쪽) 염기당 N 함량 플롯.
+A good (left) and a bad (right) per base N content plot.
 :::
 
-**8. 시퀀스 길이 분포**
+**8. Sequence length distribution**
 
-시퀀스 길이 분포 그래프는 파일의 모든 시퀀스에 걸친 리드 길이 분포를 표시합니다.
-대부분의 단일 세포 시퀀싱 화학의 경우 모든 리드는 동일한 길이를 가질 것으로 예상되므로 그래프에 단일 피크가 나타납니다.
-그러나 품질 평가 전에 품질 트리밍을 적용한 경우 리드 길이에 약간의 변동이 관찰될 수 있습니다.
-트리밍으로 인한 리드 길이의 작은 차이는 정상이며 예상되는 경우 우려할 필요가 없습니다.
+The sequence length distribution graph displays the distribution of read lengths across all sequences in the file.
+For most single-cell sequencing chemistries, all reads are expected to have the same length, resulting in a single peak in the graph.
+However, if quality trimming was applied before the quality assessment, some variation in read lengths may be observed.
+Small differences in read lengths due to trimming are normal and should not be a cause for concern if expected.
 
 :::{figure-md} raw-proc-fig-fastqc-sequence-length-distribution
-<img src="../_static/images/raw_data_processing/fastqc_example/sequence_length_distribution.jpg" alt="시퀀스 길이 분포" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/fastqc_example/sequence_length_distribution.jpg" alt="Sequence Length Distribution" class="bg-primary mb-1" width="800px">
 
-좋은(왼쪽) 및 나쁜(오른쪽) 시퀀스 길이 분포 플롯.
+A good (left) and a bad (right) sequence length distribution plot.
 :::
 
-**9. 시퀀스 중복 수준**
+**9. Sequence duplication levels**
 
-시퀀스 중복 수준 플롯은 중복 제거 전후에 파란색 선으로 표시되는 리드 시퀀스의 중복 수준 분포를 보여줍니다.
-단일 세포 플랫폼에서는 일반적으로 여러 번의 {term}`PCR`이 필요하며, 고도로 발현되는 유전자는 자연적으로 많은 수의 전사체를 생성합니다.
-또한 `FastQC`는 UMI를 인식하지 못하므로(즉, 고유 분자 식별자를 고려하지 않음), 시퀀스의 작은 하위 집합이 높은 중복 수준을 보이는 것이 일반적입니다.
+The sequence duplication level plot illustrates the distribution of duplication levels for read sequences, represented by the blue line, both before and after deduplication.
+In single-cell platforms, multiple rounds of {term}`PCR` are typically required, and highly expressed genes naturally produce a large number of transcripts.
+Additionally, since `FastQC` is not UMI-aware (i.e., it does not account for unique molecular identifiers), it is common for a small subset of sequences to show high duplication levels.
 
-이것이 이 모듈에서 경고 또는 실패를 유발할 수 있지만, 반드시 데이터 품질 문제를 나타내는 것은 아닙니다.
-그러나 대부분의 시퀀스는 여전히 낮은 중복 수준을 보여야 하며, 이는 다양하고 잘 준비된 라이브러리를 반영합니다.
+While this may trigger a warning or failure in this module, it does not necessarily indicate a quality issue with the data.
+However, the majority of sequences should still exhibit low duplication levels, reflecting a diverse and well-prepared library.
 
 :::{figure-md} raw-proc-fig-fastqc-sequence-duplication-levels
-<img src="../_static/images/raw_data_processing/fastqc_example/sequence_duplication_levels.jpg" alt="시퀀스 중복 수준" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/fastqc_example/sequence_duplication_levels.jpg" alt="Sequence Duplication Levels" class="bg-primary mb-1" width="800px">
 
-좋은(왼쪽) 및 나쁜(오른쪽) 시퀀스당 중복 수준 플롯.
+A good (left) and a bad (right) per sequence duplication levels plot.
 :::
 
-**10. 과대표현된 시퀀스**
+**10. Overrepresented sequences**
 
-과대표현된 시퀀스 모듈은 총 리드의 0.1% 이상을 구성하는 리드 시퀀스를 식별합니다.
-단일 세포 시퀀싱에서는 PCR 중에 증폭된 고도로 발현된 유전자로 인해 일부 과대표현된 시퀀스가 발생할 수 있습니다.
-그러나 대부분의 시퀀스는 과대표현되어서는 안 됩니다.
+The overrepresented sequences module identifies read sequences that constitute more than 0.1% of the total reads.
+In single-cell sequencing, some overrepresented sequences may arise from highly expressed genes amplified during PCR.
+However, the majority of sequences should not be overrepresented.
 
-과대표현된 시퀀스의 출처가 확인되면(즉, "No Hit"으로 나열되지 않음), 해당 출처로부터 라이브러리에 잠재적인 오염이 있음을 나타낼 수 있습니다.
-이러한 경우 데이터 품질을 보장하기 위해 추가 조사가 필요합니다.
+If the source of an overrepresented sequence is identified (i.e., not listed as "No Hit"), it could indicate potential contamination in the library from the corresponding source.
+Such cases warrant further investigation to ensure data quality.
 
 :::{figure-md} raw-proc-fig-fastqc-overrepresented-sequences
-<img src="../_static/images/raw_data_processing/fastqc_example/overrepresented_sequences.jpg" alt="과대표현된 시퀀스" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/fastqc_example/overrepresented_sequences.jpg" alt="Overrepresented Sequences" class="bg-primary mb-1" width="800px">
 
-과대표현된 시퀀스 테이블.
+An overrepresented sequence table.
 :::
 
-**11. 어댑터 함량**
+**11. Adapter content**
 
-어댑터 함량 모듈은 각 염기 위치에서 {term}`어댑터 서열 <Adapter sequences>`을 포함하는 리드의 누적 백분율을 표시합니다.
-높은 수준의 어댑터 서열은 라이브러리 준비 중 어댑터의 불완전한 제거를 나타내며, 이는 다운스트림 분석을 방해할 수 있습니다.
-이상적으로는 데이터에 상당한 어댑터 함량이 없어야 합니다.
-어댑터 서열이 풍부한 경우 데이터 품질을 개선하기 위해 추가 트리밍이 필요할 수 있습니다.
+The adapter content module displays the cumulative percentage of reads containing {term}`adapter sequences <Adapter sequences>` at each base position.
+High levels of adapter sequences indicate incomplete removal of adapters during library preparation, which can interfere with downstream analyses.
+Ideally, no significant adapter content should be present in the data.
+If adapter sequences are abundant, additional trimming may be necessary to improve data quality.
 
 :::{figure-md} raw-proc-fig-fastqc-adapter-content
-<img src="../_static/images/raw_data_processing/fastqc_example/adapter_content.jpg" alt="어댑터 함량" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/fastqc_example/adapter_content.jpg" alt="Adapter Content" class="bg-primary mb-1" width="800px">
 
-좋은(왼쪽) 및 나쁜(오른쪽) 시퀀스당 품질 점수 플롯. 오른쪽 플롯은 [QC Fail 웹사이트](https://sequencing.qcfail.com/articles/read-through-adapters-can-appear-at-the-ends-of-sequencing-reads/)에서 가져온 것입니다.
+A good (left) and a bad (right) per sequence quality score plot. The plot on the right is from [the QC Fail website](https://sequencing.qcfail.com/articles/read-through-adapters-can-appear-at-the-ends-of-sequencing-reads/).
 :::
 
 ```
 
-여러 FastQC 보고서는 [`MultiQC`](https://multiqc.info) 도구를 사용하여 단일 보고서로 결합할 수 있습니다.
+Multiple FastQC reports can be combined into a single report using the tool [`MultiQC`](https://multiqc.info).
 
 (raw-proc:aln-map)=
 
-## 정렬 및 매핑
+## Alignment and mapping
 
-매핑 또는 정렬은 단일 세포 원시 데이터 처리에서 중요한 단계입니다.
-이는 리드 서열과 밀접하게 일치하는 게놈 또는 전사체 위치와 같은 각 시퀀싱된 단편의 잠재적 {term}`좌위 <Locus>`를 결정하는 것을 포함합니다.
-이 단계는 리드를 소스 영역에 올바르게 할당하는 데 필수적입니다.
+Mapping or Alignment is a critical step in single-cell raw data processing.
+It involves determining the potential {term}`loci <Locus>` of origin for each sequenced fragment, such as the genomic or transcriptomic locations that closely match the read sequence.
+This step is essential for correctly assigning reads to their source regions.
 
-단일 세포 시퀀싱 프로토콜에서 원시 서열 파일은 일반적으로 다음을 포함합니다.
+In single-cell sequencing protocols, the raw sequence files typically include:
 
-- 세포 {term}`바코드 <Barcode>` (CB): 개별 세포에 대한 고유 식별자.
-- 고유 분자 식별자(UMI): 증폭 편향을 설명하기 위해 개별 분자를 구별하는 태그.
-- 원시 {term}`cDNA <Complementary DNA (cDNA)>` 서열: 분자에서 생성된 실제 리드 서열.
+- Cell {term}`Barcodes <Barcode>` (CB): Unique identifiers for individual cells.
+- Unique Molecular Identifiers (UMIs): Tags that distinguish individual molecules to account for amplification bias.
+- Raw {term}`cDNA <Complementary DNA (cDNA)>` Sequences: The actual read sequences generated from the molecules.
 
-첫 번째 단계({numref}`raw-proc-fig-overview`)로서 정확한 매핑 또는 정렬은 신뢰할 수 있는 다운스트림 분석에 매우 중요합니다.
-이 단계에서의 오류, 예를 들어 리드를 전사체 또는 유전자에 잘못 매핑하는 것은 부정확하거나 오해의 소지가 있는 카운트 행렬을 초래할 수 있습니다.
+As the first step ({numref}`raw-proc-fig-overview`), accurate mapping or alignment is crucial for reliable downstream analyses.
+Errors during this step, such as incorrect mapping of reads to transcripts or genes, can result in inaccurate or misleading count matrices.
 
-리드 서열을 참조 서열에 매핑하는 것은 scRNA-seq 개발보다 훨씬 이전부터 있었지만, 종종 수억에서 수십억 개의 리드를 포함하는 최신 scRNA-seq 데이터셋의 엄청난 규모로 인해 이 단계는 특히 계산 집약적입니다.
-많은 기존 RNA-seq 정렬기는 프로토콜에 구애받지 않으며 세포 바코드, UMI 또는 그 위치 및 길이와 같은 scRNA-seq에 특정한 기능을 본질적으로 고려하지 않습니다.
-결과적으로 디멀티플렉싱 및 UMI 분해능과 같은 단계에는 종종 추가 도구가 필요합니다 {cite}`Smith2017`.
+While mapping read sequences to reference sequences _far_ predates the development of scRNA-seq, the sheer scale of modern scRNA-seq datasets—often involving hundreds of millions to billions of reads—makes this step particularly computationally intensive.
+Many existing RNA-seq aligners are protocol-agnostic and do not inherently account for features specific to scRNA-seq, such as cell barcodes, UMIs, or their positions and lengths.
+As a result, additional tools are often required for steps like demultiplexing and UMI resolution {cite}`Smith2017`.
 
-scRNA-seq 데이터 정렬 및 매핑의 문제를 해결하기 위해 추가 처리 요구 사항을 자동으로 또는 내부적으로 처리하는 몇 가지 특수 도구가 개발되었습니다.
-이러한 도구는 다음과 같습니다.
+To address the challenges of aligning and mapping scRNA-seq data, several specialized tools have been developed that handle the additional processing requirements automatically or internally.
+These tools include:
 
-- `Cell Ranger` (10x Genomics의 상용 소프트웨어) {cite}`raw:Zheng2017`
+- `Cell Ranger` (commercial software from 10x Genomics) {cite}`raw:Zheng2017`
 - `zUMIs` {cite}`zumis`
 - `alevin` {cite}`Srivastava2019`
 - `RainDrop` {cite}`niebler2020raindrop`
@@ -268,564 +268,565 @@ scRNA-seq 데이터 정렬 및 매핑의 문제를 해결하기 위해 추가 �
 - `STARsolo` {cite}`Kaminow2021`
 - `alevin-fry` {cite}`raw:He2022`
 
-이러한 도구는 scRNA-seq 리드 정렬, 기술적 리드 내용(예: 세포 바코드 및 UMI) 구문 분석, 디멀티플렉싱 및 UMI 분해능을 위한 특수 기능을 제공합니다.
-단순화된 사용자 인터페이스를 제공하지만 내부 방법론은 크게 다릅니다.
-일부 도구는 추가로 처리되는 {term}`BAM` 파일과 같은 전통적인 중간 파일을 생성하는 반면, 다른 도구는 입출력 작업을 최소화하고 계산 오버헤드를 줄이기 위해 완전히 메모리에서 작동하거나 압축된 중간 표현을 사용합니다.
+These tools provide specialized capabilities for aligning scRNA-seq reads, parsing technical read content (e.g., cell barcodes and UMIs), demultiplexing, and UMI resolution.
+Although they offer simplified user interfaces, their internal methodologies differ significantly.
+Some tools generate traditional intermediate files, such as {term}`BAM` files, which are processed further, while others operate entirely in memory or use compact intermediate representations to minimize input/output operations and reduce computational overhead.
 
-이러한 도구는 특정 알고리즘, 데이터 구조, 시간 및 공간 복잡성의 절충점에서 다양하지만, 그들의 접근 방식은 일반적으로 두 축을 따라 분류될 수 있습니다.
+While these tools vary in their specific algorithms, data structures, and trade-offs in time and space complexity, their approaches can generally be categorized along two axes:
 
-1. **수행하는 매핑 유형**, 그리고
-2. **리드를 매핑하는 참조 서열 유형**.
+1. **The type of mapping they perform**, and
+2. **The type of reference sequence against which they map reads**.
 
 (raw-proc:types-of-mapping)=
 
-### 매핑 유형
+### Types of mapping
 
-sc/snRNA-seq 데이터 매핑에 일반적으로 사용되는 세 가지 주요 매핑 알고리즘 유형인 스플라이스 정렬, 연속 정렬 및 경량 매핑의 변형에 중점을 둡니다.
+We focus on three main types of mapping algorithms commonly used for mapping sc/snRNA-seq data: spliced alignment, contiguous alignment, and variations of lightweight mapping.
 
-먼저 정렬 기반 접근 방식과 경량 매핑 기반 접근 방식을 구분합니다({numref}`raw-proc-fig-alignment-mapping`).
-정렬 기반 방법은 다양한 휴리스틱을 사용하여 리드가 유래할 수 있는 잠재적 좌위를 식별한 다음, 일반적으로 동적 프로그래밍 알고리즘을 사용하여 리드와 참조 간의 최상의 뉴클레오티드 수준 정렬 점수를 매깁니다.
+First, we distinguish between alignment-based approaches and lightweight mapping-based approaches ({numref}`raw-proc-fig-alignment-mapping`).
+Alignment-based methods use various heuristics to identify potential loci from which reads may originate and then score the best nucleotide-level alignment between the read and reference, typically using dynamic programming algorithms.
 
-[전역 정렬](https://en.wikipedia.org/wiki/Needleman%E2%80%93Wunsch_algorithm)은 쿼리 및 참조 서열 전체를 정렬하는 반면, [지역 정렬](https://en.wikipedia.org/wiki/Smith%E2%80%93Waterman_algorithm)은 하위 서열 정렬에 중점을 둡니다.
-짧은 리드 정렬은 종종 "피팅" 정렬이라고도 하는 준-전역 접근 방식을 사용하며, 여기서 대부분의 쿼리는 참조의 하위 문자열에 정렬됩니다.
-또한, "소프트 클리핑"은 ["확장" 정렬](https://github.com/smarco/WFA2-lib#-33-alignment-span)을 통해 달성되는 리드의 시작 또는 끝에서 불일치, 삽입 또는 삭제에 대한 패널티를 줄이는 데 사용될 수 있습니다.
-이러한 변형은 동적 프로그래밍 재귀 및 추적의 규칙을 수정하지만, 전체 복잡성을 근본적으로 변경하지는 않습니다.
+[global alignment](https://en.wikipedia.org/wiki/Needleman%E2%80%93Wunsch_algorithm) aligns the entirety of the query and reference sequences, while [local alignment](https://en.wikipedia.org/wiki/Smith%E2%80%93Waterman_algorithm) focuses on aligning subsequences.
+Short-read alignment often employs a semi-global approach, also known as "fitting" alignment, where most of the query aligns to a substring of the reference.
+Additionally, "soft-clipping" may be used to reduce penalties for mismatches, insertions, or deletions at the start or end of the read, achieved through ["extension" alignment](https://github.com/smarco/WFA2-lib#-33-alignment-span).
+While these variations modify the rules of the dynamic programming recurrence and traceback, they do not fundamentally alter its overall complexity.
 
-게놈 시퀀싱 리드 정렬의 실제 효율성을 향상시키기 위해 여러 정교한 수정 및 휴리스틱이 개발되었습니다.
-예를 들어, `밴드 정렬` {cite}`chao1992aligning`은 임계값 미만의 정렬 점수가 관심 대상이 아닐 때 동적 프로그래밍 테이블의 큰 부분을 계산하지 않기 위해 많은 도구에서 사용하는 인기 있는 휴리스틱입니다.
-X-드롭 {cite}`zhang2000` 및 Z-드롭 {cite}`li2018minimap2`와 같은 다른 휴리스틱은 프로세스 초기에 유망하지 않은 정렬을 효율적으로 제거합니다.
-파면 정렬 {cite}`marco2021fast`, marco2022optimal과 같은 최근의 발전은 특히 고득점 정렬이 있을 때 상당히 단축된 시간과 공간에서 최적의 정렬을 결정할 수 있게 합니다.
-또한, 많은 작업이 데이터 레이아웃 및 계산을 최적화하여 명령어 수준 병렬성 {cite}`wozniak1997using, rognes2000six, farrar2007striped`을 활용하고, 차이 인코딩 {cite:t}`Suzuki2018`을 통해 데이터 병렬성 및 벡터화를 용이하게 하는 방식으로 동적 프로그래밍 재귀를 표현하는 데 중점을 두었습니다.
-가장 널리 사용되는 정렬 도구 대부분은 이러한 고도로 최적화된 벡터화된 구현을 통합합니다.
+Several sophisticated modifications and heuristics have been developed to enhance the practical efficiency of aligning genomic sequencing reads.
+For example, `banded alignment` {cite}`chao1992aligning` is a popular heuristic used by many tools to avoid computing large portions of the dynamic programming table when alignment scores below a threshold are not of interest.
+Other heuristics, like X-drop {cite}`zhang2000` and Z-drop {cite}`li2018minimap2`, efficiently prune unpromising alignments early in the process.
+Recent advances, such as wavefront alignment {cite}`marco2021fast`, marco2022optimal, enable the determination of optimal alignments in significantly reduced time and space, particularly when high-scoring alignments are present.
+Additionally, much work has focused on optimizing data layout and computation to leverage instruction-level parallelism {cite}`wozniak1997using, rognes2000six, farrar2007striped`, and expressing dynamic programming recurrences in ways that facilitate data parallelism and vectorization, such as through difference encoding {cite:t}`Suzuki2018`.
+Most widely-used alignment tools incorporate these highly optimized, vectorized implementations.
 
-정렬 점수 외에도 이 점수를 생성하는 실제 정렬의 역추적은 종종 `CIGAR` 문자열(Concise Idiosyncratic Gapped Alignment Report의 약자)로 인코딩됩니다.
-이 영숫자 표현은 일반적으로 SAM 또는 BAM 파일 출력에 저장됩니다.
-예를 들어, `CIGAR` 문자열 `3M2D4M`은 정렬에 3개의 일치 또는 불일치가 있고, 그 뒤에 길이 2의 삭제(참조에는 있지만 리드에는 없는 염기를 나타냄)가 있으며, 그런 다음 4개의 일치 또는 불일치가 더 있음을 나타냅니다.
-확장된 `CIGAR` 문자열은 일치, 불일치 또는 삽입을 구별하는 것과 같은 추가 세부 정보를 제공할 수 있습니다.
-예를 들어, `3=2D2=2X`는 이전 예와 동일한 정렬을 인코딩하지만 삭제 전 3개의 염기가 일치하고, 그 뒤에 2개의 일치하는 염기와 2개의 불일치하는 염기가 있음을 지정합니다.
-`CIGAR` 문자열 형식에 대한 자세한 설명은 [SAMtools 매뉴얼](https://samtools.github.io/hts-specs/SAMv1.pdf) 또는 [UMICH의 SAM 위키 페이지](https://genome.sph.umich.edu/wiki/SAM#What_is_a_CIGAR.3F)에서 찾을 수 있습니다.
+In addition to the alignment score, the backtrace of the actual alignment that produces this score is often encoded as a `CIGAR` string (short for "Concise Idiosyncratic Gapped Alignment Report").
+This alphanumeric representation is typically stored in the SAM or BAM file output.
+For example, the `CIGAR` string `3M2D4M` indicates that the alignment has three matches or mismatches, followed by a deletion of length two (representing bases present in the reference but not the read), and then four more matches or mismatches.
+Extended `CIGAR` strings can provide additional details, such as distinguishing between matches, mismatches, or insertions.
+For instance, `3=2D2=2X` encodes the same alignment as the previous example but specifies that the three bases before the deletion are matches, followed by two matched bases and two mismatched bases after the deletion.
+A detailed description of the `CIGAR` string format can be found in [the SAMtools manual](https://samtools.github.io/hts-specs/SAMv1.pdf) or [the SAM wiki page of UMICH](https://genome.sph.umich.edu/wiki/SAM#What_is_a_CIGAR.3F).
 
-정렬 기반 접근 방식은 계산 비용이 많이 들지만, 리드의 각 잠재적 매핑에 대한 품질 점수를 제공합니다.
-이 점수를 통해 고품질 정렬과 낮은 복잡성 또는 "가짜" 일치를 구별할 수 있습니다.
-이러한 접근 방식에는 `STAR` {cite}`dobin2013star` 및 `STARsolo` {cite}`Kaminow2021`와 같은 도구에 구현된 전통적인 "전체 정렬" 방법과 `salmon` {cite}`Srivastava2020Alignment` 및 `alevin` {cite}`Srivastava2019`와 같이 매핑 점수를 매기지만 최적 정렬의 역추적 계산을 건너뛰는 _선택적 정렬_ 방법이 포함됩니다.
+Alignment-based approaches, though computationally expensive, provide a quality score for each potential mapping of a read.
+This score allows them to distinguish between high-quality alignments and low-complexity or "spurious" matches between the read and reference.
+These approaches include traditional "full-alignment" methods, such as those implemented in tools like `STAR` {cite}`dobin2013star` and `STARsolo` {cite}`Kaminow2021`, as well as _selective-alignment_ methods, like those in `salmon` {cite}`Srivastava2020Alignment` and `alevin` {cite}`Srivastava2019`, which score mappings but skip the computation of the optimal alignment’s backtrace.
 
 :::{figure-md} raw-proc-fig-alignment-mapping
-<img src="../_static/images/raw_data_processing/alignment_vs_mapping.png" alt="정렬 대 매핑" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/alignment_vs_mapping.png" alt="Alignment vs Mapping" class="bg-primary mb-1" width="800px">
 
-정렬 기반 방법과 경량 매핑 기반 방법의 추상적인 개요.
+An abstract overview of the alignment-based method and lightweight mapping-based method.
 :::
 
-정렬 기반 접근 방식은 스플라이스 정렬 및 연속 정렬 방법으로 분류할 수 있습니다.
+Alignment-based approaches can be categorized into spliced-alignment and contiguous-alignment methods.
 
-```{dropdown} 스플라이스 정렬 방법
-스플라이스 정렬 방법은 시퀀스 리드가 참조의 여러 개별 세그먼트에 걸쳐 정렬되도록 허용하여 정렬된 영역 사이에 잠재적으로 큰 간격이 있을 수 있도록 합니다.
-이러한 접근 방식은 리드가 {term}`스플라이스 접합부 <Splice Junctions>`를 가로지를 수 있는 RNA-seq 리드를 게놈에 정렬하는 데 특히 유용합니다.
-이러한 경우 리드의 연속 서열은 참조에서 인트론과 엑손 하위 서열로 분리될 수 있으며 잠재적으로 수 킬로베이스의 서열에 걸쳐 있을 수 있습니다.
-스플라이스 정렬은 리드의 작은 부분만 스플라이스 접합부와 겹치는 경우 특히 어려운데, 이는 돌출된 세그먼트를 정확하게 배치하는 데 제한된 서열 정보만 사용할 수 있기 때문입니다.
+```{dropdown} Spliced-alignment methods
+Spliced-alignment methods allow a sequence read to align across multiple distinct segments of a reference, allowing potentially large gaps between aligned regions.
+These approaches are particularly useful for aligning RNA-seq reads to the genome, where reads may span {term}`splice junctions <Splice Junctions>`.
+In such cases, a contiguous sequence in the read may be separated by intron and exon subsequence in the reference, potentially spanning kilobases of sequence.
+Spliced alignment is especially challenging when only a small portion of a read overlaps a splice junction, as limited sequence information is available to accurately place the overhanging segment.
 ```
 
-```{dropdown} 연속 정렬 방법
-연속 정렬 방법은 참조의 연속적인 하위 문자열이 리드와 잘 정렬되어야 합니다.
-작은 삽입 및 삭제는 허용될 수 있지만 스플라이스 정렬에서와 같은 큰 간격은 일반적으로 허용되지 않습니다.
+```{dropdown} Contiguous-alignment methods
+Contiguous-alignment methods require a continuous substring of the reference to align well with the read.
+While small insertions and deletions may be tolerated, large gaps—such as those in spliced alignments—are generally not allowed.
 ```
 
-스플라이스 및 연속 정렬과 같은 정렬 기반 방법은 **의사 정렬** {cite}`Bray2016`, **준-매핑** {cite}`srivastava2016rapmap`, **구조적 제약이 있는 의사 정렬** {cite}`raw:He2022`과 같은 접근 방식을 포함하는 **경량 매핑 방법**과 구별될 수 있습니다.
+Alignment-based methods, such as spliced and contiguous alignment, can be distinguished from **lightweight-mapping methods**, which include approaches like **pseudoalignment** {cite}`Bray2016`, **quasi-mapping** {cite}`srivastava2016rapmap`, and **pseudoalignment with structural constraints** {cite}`raw:He2022`.
 
-경량 매핑 방법은 훨씬 더 빠른 속도를 달성합니다.
-그러나 일치 품질을 결정하기 위해 쉽게 해석할 수 있는 점수 기반 평가를 제공하지 않으므로 정렬 신뢰도를 평가하기가 더 어렵습니다.
+Lightweight-mapping methods achieve significantly higher speed.
+However, they do not provide easily-interpretable score-based assessments to determine the quality of a match, making it more difficult to assess alignment confidence.
 
 (raw-proc:mapping-references)=
 
-### 다른 참조 서열에 대한 매핑
+### Mapping against different reference sequences
 
-매핑 알고리즘을 선택하는 것 외에도 리드가 매핑되는 참조 서열에 대해서도 선택할 수 있습니다.
-참조 서열에는 세 가지 주요 범주가 있습니다.
+In addition to selecting a mapping algorithm, choices can _also_ be made regarding the reference sequence against which the reads are mapped.
+There are three main categories of reference sequences:
 
-- 전체 참조 게놈 (일반적으로 주석이 달림)
-- 주석이 달린 전사체
-- 증강된 전사체
+- Full reference genome (typically annotated)
+- Annotated transcriptome
+- Augmented transcriptome
 
-현재, 매핑 알고리즘과 참조 서열의 모든 조합이 가능한 것은 아닙니다.
-예를 들어, 경량 매핑 알고리즘은 아직 참조 게놈에 대한 리드의 스플라이스 매핑을 지원하지 않습니다.
+Currently, not all combinations of mapping algorithms and reference sequences are possible.
+For instance, lightweight-mapping algorithms do not yet support spliced mapping of reads against a reference genome.
 
 (raw-proc:genome-mapping)=
 
-#### 전체 게놈에 매핑
+#### Mapping to the full genome
 
-매핑에 사용되는 첫 번째 유형의 참조는 대상 유기체의 **전체 게놈**이며, 일반적으로 매핑 중에 주석이 달린 전사체가 고려됩니다.
-`zUMIs` {cite}`zumis`, `Cell Ranger` {cite}`raw:Zheng2017`, `STARsolo` {cite}`Kaminow2021`와 같은 도구가 이 접근 방식을 따릅니다.
-많은 리드가 **스플라이스된 전사체**에서 유래하므로 이 방법은 하나 이상의 스플라이스 접합부에 걸쳐 정렬을 분할할 수 있는 **스플라이스 인식 정렬 알고리즘**이 필요합니다.
+The first type of reference used for mapping is the **entire genome** of the target organism, typically with annotated transcripts considered during mapping.
+Tools such as `zUMIs` {cite}`zumis`, `Cell Ranger` {cite}`raw:Zheng2017`, and `STARsolo` {cite}`Kaminow2021` follow this approach.
+Since many reads originate from **spliced transcripts**, this method requires a **splice-aware alignment algorithm** capable of splitting alignments across one or more splice junctions.
 
-이 접근 방식의 주요 장점은 주석이 달린 전사체뿐만 아니라 게놈의 모든 위치에서 발생하는 리드를 설명한다는 것입니다.
-또한 **게놈 전체 인덱스**가 구성되므로 알려진 스플라이스된 전사체에 매핑되는 리드뿐만 아니라 인트론과 겹치거나 비코딩 영역 내에 정렬되는 리드를 보고하는 데 추가 비용이 거의 들지 않으므로 이 방법은 **단일 세포** 및 **단일 핵** 데이터에 똑같이 효과적입니다.
-또 다른 이점은 주석이 달린 전사체, 엑손 또는 인트론 외부에서 매핑되는 리드도 설명할 수 있어 정량화된 좌위의 **_사후_ 증강**이 가능하다는 것입니다.
+A key advantage of this approach is that it accounts for reads arising from any location in the genome, not just those from annotated transcripts.
+Additionally, because a **genome-wide index** is constructed, there is minimal additional cost in reporting not only reads that map to known spliced transcripts but also those that overlap introns or align within non-coding regions, making this method equally effective for **single-cell** and **single-nucleus** data.
+Another benefit is that even reads mapping outside annotated transcripts, exons, or introns can still be accounted for, enabling **_post hoc_ augmentation** of the quantified loci.
 
 (raw-proc:txome-mapping)=
 
-#### 스플라이스된 전사체에 매핑
+#### Mapping to the spliced transcriptome
 
-게놈에 대한 스플라이스 정렬의 계산 오버헤드를 줄이기 위해 널리 채택된 대안은 주석이 달린 전사체 서열만 참조로 사용하는 것입니다.
-대부분의 단일 세포 실험은 마우스나 인간과 같이 잘 주석이 달린 전사체를 가진 모델 유기체에서 수행되므로 전사체 기반 정량화는 게놈 기반 방법과 유사한 리드 커버리지를 달성할 수 있습니다.
+To reduce the computational overhead of spliced alignment to a genome, a widely adopted alternative is to use only the annotated transcript sequences as the reference.
+Since most single-cell experiments are conducted on model organisms like mouse or human, which have well-annotated transcriptomes, transcriptome-based quantification can achieve similar read coverage to genome-based methods.
 
-게놈에 비해 전사체 서열은 훨씬 작아서 매핑에 필요한 계산 자원을 크게 줄입니다.
-또한 스플라이싱 패턴이 이미 전사체 서열에 표현되어 있으므로 이 접근 방식은 복잡한 스플라이스 정렬의 필요성을 제거합니다.
-대신 리드에 대한 연속적인 정렬 또는 매핑을 간단히 검색할 수 있습니다.
-또는 리드를 연속적인 정렬을 사용하여 매핑할 수 있으므로 정렬 기반 및 경량 매핑 기술 모두 전사체 참조에 적합합니다.
+Compared to the genome, transcriptome sequences are much smaller, significantly reducing the computational resources needed for mapping.
+Additionally, because splicing patterns are already represented in transcript sequences, this approach eliminates the need for complex spliced alignment.
+Instead, one can simply search for contiguous alignments or mappings for the read.
+Alternatively, reads can be mapped using contiguous alignments, making both alignment-based and lightweight-mapping techniques suitable for transcriptome references.
 
-이러한 접근 방식은 정렬 및 매핑에 필요한 메모리와 시간을 크게 줄이지만 스플라이스된 전사체 외부에서 발생하는 리드를 포착하지 못합니다.
-결과적으로 단일 핵 데이터를 처리하는 데 적합하지 않습니다.
-단일 세포 실험에서도 스플라이스된 전사체 외부에서 발생하는 리드는 모든 데이터의 상당 부분을 차지할 수 있으며, 이러한 리드를 후속 분석에 통합해야 한다는 증거가 증가하고 있습니다 {cite}`technote_10x_intronic_reads,Pool2022`.
-단일 세포 실험에서도 스플라이스된 전사체 외부 영역에서 상당한 비율의 리드가 발생할 수 있으며, 이러한 리드를 다운스트림 분석에 통합하는 것이 유익할 수 있다는 증거가 증가하고 있습니다 {cite}`technote_10x_intronic_reads,Pool2022`.
-또한 경량 매핑 방법과 결합하면 스플라이스된 전사체와 리드를 생성한 실제 게놈 영역 간에 공유되는 짧은 서열이 가짜 매핑으로 이어질 수 있습니다.
-이는 결국 오해의 소지가 있고 심지어 생물학적으로 타당하지 않은 유전자 발현 추정치를 초래할 수 있습니다 {cite}`Kaminow2021,Bruning2022Comparative,raw:He2022`.
+While these approaches significantly reduce the memory and time required for alignment and mapping, they fail to capture reads that arise from outside the spliced transcriptome.
+As a result, they are not suitable for processing single-nucleus data.
+Even in single-cell experiments, reads arising from outside of the spliced transcriptome can constitute a substantial fraction of all data, and there is growing evidence that such reads should be incorporated into subsequent analysis {cite}`technote_10x_intronic_reads,Pool2022`.
+Even in single-cell experiments, a substantial fraction of reads may arise from regions outside the spliced transcriptome, and increasing evidence suggests that incorporating these reads into downstream analyses can be beneficial {cite}`technote_10x_intronic_reads,Pool2022`.
+Additionally, when paired with lightweight-mapping methods, short sequences shared between the spliced transcriptome and the actual genomic regions that generated a read can lead to spurious mappings.
+This, in turn, may result in misleading and even biologically implausible gene expression estimates {cite}`Kaminow2021,Bruning2022Comparative,raw:He2022`.
 
 (raw-proc:aug-txome-mapping)=
 
-#### 증강된 전사체에 매핑
+#### Mapping to an augmented transcriptome
 
-스플라이스된 전사체 외부에서 유래하는 리드를 설명하기 위해 스플라이스된 전사체 서열은 전체 길이의 스플라이스되지 않은 전사체 또는 절제된 인트론 서열과 같은 추가 참조 서열로 증강될 수 있습니다.
-이를 통해 전체 게놈 정렬에 비해 더 좋고, 더 빠르고, 더 메모리 효율적인 매핑이 가능하며, 그렇지 않으면 놓칠 수 있는 많은 리드를 포착할 수 있습니다.
-스플라이스된 전사체만 사용하는 것보다 더 많은 리드를 자신 있게 할당할 수 있으며, 경량 매핑 접근 방식과 결합하면 가짜 매핑을 크게 줄일 수 있습니다 {cite}`raw:He22`.
-증강된 전사체는 전체 게놈에 매핑하지 않는 방법, 특히 단일 핵 데이터 처리 및 {term}`RNA 속도` 분석에서 널리 사용됩니다 {cite}`Soneson2021Preprocessing` ({doc}`../trajectories/rna_velocity` 참조).
-이러한 증강된 참조는 전체 게놈에 대한 스플라이스 정렬에 의존하지 않는 모든 일반적인 방법에 대해 구성할 수 있습니다 {cite}`Srivastava2019,Melsted2021,raw:He22`.
+To account for reads originating outside spliced transcripts, the spliced transcript sequences can be augmented with additional reference sequences, such as full-length unspliced transcripts or excised intronic sequences.
+This enables better, faster, and more memory-efficient mapping compared to full-genome alignment, while still capturing many reads that would otherwise be missed.
+More reads can be confidently assigned compared to using only the spliced transcriptome, and when combined with lightweight mapping approaches, spurious mappings can be significantly reduced {cite}`raw:He2022`.
+Augmented transcriptomes are widely used in methods that do not map to the full genome, particularly for single-nucleus data processing and {term}`RNA velocity` analysis {cite}`Soneson2021Preprocessing` (see {doc}`../trajectories/rna_velocity`).
+These augmented references can be constructed for all common methods that do not rely on spliced alignment to the full genome {cite}`Srivastava2019,Melsted2021,raw:He2022`.
 
 (raw-proc:cb-correction)=
 
-## 세포 바코드 보정
+## Cell barcode correction
 
-10x Genomics에서 제공하는 것과 같은 드롭렛 기반 단일 세포 분리 시스템은 세포 이질성의 원인과 결과를 연구하는 데 중요한 도구가 되었습니다.
-이 분리 시스템에서 각 포획된 세포의 RNA 물질은 **바코드 비드**와 함께 수성 드롭렛 캡슐화 내에서 추출됩니다.
-이 비드는 개별 세포의 RNA 함량을 나중에 cDNA 단편과 함께 시퀀싱되는 고유한 올리고뉴클레오티드인 세포 바코드(CB)로 태그합니다.
-비드에는 고다양성 DNA 바코드가 포함되어 있어 세포의 분자 함량을 병렬로 바코딩하고 시퀀싱 리드를 개별 세포 빈으로 _컴퓨터상에서_ 디멀티플렉싱할 수 있습니다.
+Droplet-based single-cell segregation systems, such as those provided by 10x Genomics, have become an important tool for studying the cause and consequences of cellular heterogeneity.
+In this segregation system, the RNA material of each captured cell is extracted within a water-based droplet encapsulation along with a **barcoded bead**.
+These beads tag the RNA content of individual cells with unique oligonucleotides, called cell barcodes (CBs), that are later sequenced along with the fragments of the cDNAs that are reversely transcribed from the RNA content.
+The beads contain high-diversity DNA barcodes, allowing for parallel barcoding of a cell’s molecular content and _in silico_ demultiplexing of sequencing reads into individual cellular bins.
 
-```{admonition} 정렬 방향에 대한 참고 사항
+```{admonition} A note on alignment orientation
 
-샘플 화학 및 사용자 정의 처리 옵션에 따라 참조에 정렬되는 모든 시퀀싱된 단편이 반드시 정량화 및 바코드 보정을 위해 고려되는 것은 아닙니다.
-필터링에 일반적으로 적용되는 기준 중 하나는 정렬 방향입니다.
-특히, 특정 화학은 정렬된 리드가 특정 방향으로만 기본 전사체에 매핑되도록(즉, 다시 매핑되도록) 프로토콜을 지정합니다.
-예를 들어, 10x Genomics 3' Chromium 화학에서는 생물학적 리드가 기본 전사체의 순방향 가닥에 정렬될 것으로 예상하지만, 안티센스 리드도 존재합니다 {cite}`technote_10x_intronic_reads`.
-결과적으로 참조 서열에 역보완 방향으로 매핑된 리드는 사용자 정의 설정에 따라 무시되거나 필터링될 수 있습니다.
-화학이 이러한 소위 "가닥" 프로토콜을 따르는 경우, 이는 문서화되어야 합니다.
+Depending on the sample chemistry and user-defined processing options, not all sequenced fragments that align to the reference are necessarily considered for quantification and barcode correction.
+One commonly-applied criterion for filtering is alignment orientation.
+Specifically, certain chemistries specify protocols such that the aligned reads should only derive from (i.e. map back to) the underlying transcripts in a specific orientation.
+For example, in 10x Genomics 3' Chromium chemistries, we expect the biological read to align to the underlying transcript's forward strand, though anti-sense reads do exist {cite}`technote_10x_intronic_reads`.
+As a result, reads mapped in the reverse-complement orientation to the reference sequences may be ignored or filtered out based on user-defined settings.
+If a chemistry follows such a so-called "stranded" protocol, this should be documented.
 ```
 
-### 바코딩 오류 유형
+### Type of errors in barcoding
 
-단일 세포 프로파일링에 사용되는 태그, 서열 및 디멀티플렉싱 방법은 일반적으로 효과적입니다.
-그러나 드롭렛 기반 라이브러리에서는 관찰된 세포 바코드(CB) 수가 원래 캡슐화된 세포 수와 크게 다를 수 있으며, 종종 몇 배 차이가 납니다.
-이러한 불일치는 다음과 같은 몇 가지 주요 오류 원인에서 발생합니다.
+The tag, sequence, and demultiplexing method used for single-cell profiling is generally effective.
+However, in droplet-based libraries, the number of observed cell barcodes (CBs) can differ significantly—often by several fold—from the number of originally encapsulated cells.
+This discrepancy arises from several key sources of error:
 
-- 이중체/다중체: 단일 바코드가 여러 세포와 연관되어 세포 수가 과소 계산될 수 있습니다.
-- 빈 드롭렛: 일부 드롭렛에는 캡슐화된 세포가 없으며, 주변 RNA가 바코드로 태그되어 시퀀싱되어 세포 수가 과대 계산될 수 있습니다.
-- 서열 오류: PCR 증폭 또는 시퀀싱 중에 도입된 오류는 바코드 수를 왜곡하여 과소 및 과대 계산에 모두 기여할 수 있습니다.
+- Doublets/multiplets: A single barcode may be associated with multiple cells, leading to an undercounting of cells.
+- Empty droplets: Some droplets contain no encapsulated cells, and ambient RNA can become tagged with a barcode and sequenced, resulting in overcounting of cells.
+- Sequence errors: Errors introduced during PCR amplification or sequencing can distort barcode counts, contributing to both under- and over-counting.
 
-이러한 문제를 해결하기 위해 RNA-seq 리드를 세포별 빈으로 디멀티플렉싱하는 계산 도구는 다양한 진단 지표를 사용하여 인공적이거나 품질이 낮은 데이터를 필터링합니다.
-주변 RNA 오염 제거 {cite}`raw:Young2020,Muskovic2021,Lun2019`, 이중체 검출 {cite}`DePasquale2019,McGinnis2019,Wolock2019,Bais2019`, 뉴클레오티드 서열 유사성에 기반한 세포 바코드 오류 수정 등 수많은 방법이 존재합니다.
+To address these issues, computational tools for demultiplexing RNA-seq reads into cell-specific bins use various diagnostic indicators to filter out artefactual or low-quality data.
+Numerous methods exist for removing ambient RNA contamination {cite}`raw:Young2020,Muskovic2021,Lun2019`, detecting doublets {cite}`DePasquale2019,McGinnis2019,Wolock2019,Bais2019`, and correcting cell barcode errors based on nucleotide sequence similarity.
 
-세포 바코드 식별 및 보정에는 몇 가지 일반적인 전략이 사용됩니다.
+Several common strategies are used for cell barcode identification and correction.
 
-1. **알려진 _잠재적_ 바코드 목록에 대한 보정**:
-   10x Chromium과 같은 특정 화학은 알려진 잠재적 바코드 서열 풀에서 CB를 가져옵니다.
-   따라서 모든 샘플에서 관찰되는 바코드 집합은 종종 "화이트리스트"라고 불리는 이 알려진 목록의 하위 집합일 것으로 예상됩니다.
-   이 경우 표준 접근 방식은 다음을 가정합니다.
+1. **Correction against a known list of _potential_ barcodes**:
+   Certain chemistries, such as 10x Chromium, draw CBs from a known pool of potential barcode sequences.
+   Thus, the set of barcodes observed in any sample is expected to be a subset of this known list, often called a "whitelist".
+   In this case, the standard approach assumes that:
 
-- 알려진 목록의 항목과 일치하는 모든 바코드는 정확합니다.
-- 목록에 없는 모든 바코드는 일반적으로 {term}`해밍 거리` 또는 {term}`편집 거리`를 사용하여 허용 목록에서 가장 가까운 일치 항목을 찾아 보정됩니다.
-  이 전략은 효율적인 바코드 보정을 허용하지만 한계가 있습니다.
-  손상된 바코드가 허용 목록의 여러 바코드와 매우 유사한 경우 보정이 모호해집니다.
-  예를 들어, [10x Chromium v3 허용 목록](https://teichlab.github.io/scg_lib_structs/data/10X-Genomics/3M-february-2018.txt.gz)에서 가져온 바코드를 목록에 없는 바코드로 단일 위치에서 돌연변이시킨 경우, 허용 목록의 두 개 이상의 바코드와 해밍 거리가 $1$일 확률은 $\sim 81\%$입니다.
-  이러한 충돌 확률은 알려진 허용 목록의 바코드에 대해서만 보정하는 것을 고려함으로써 줄일 수 있으며, 이 바코드는 주어진 샘플에서 정확하게 발생합니다(또는 심지어 명목상의 빈도 임계값 이상으로 주어진 샘플에서 정확하게 발생하는 것만).
-  또한, "보정된" 위치의 염기 품질과 같은 정보는 모호한 보정의 경우 동점을 깨는 데 잠재적으로 사용될 수 있습니다.
-  그러나 분석된 세포 수가 증가함에 따라 잠재적인 세포 바코드 집합의 불충분한 서열 다양성은 모호한 보정의 빈도를 증가시키고, 모호한 보정이 있는 바코드로 태그된 리드는 가장 일반적으로 폐기됩니다.
+- Any barcode matching an entry in the known list is correct.
+- Any barcode not in the list is corrected by finding the closest match from the permit list, typically using {term}`Hamming distance` or {term}`edit distance`.
+  This strategy allows for efficient barcode correction but has limitations.
+  If a corrupted barcode closely resembles multiple barcodes in the permit list, its correction becomes ambiguous.
+  For example, for a barcode taken from the [10x Chromium v3 permit list](https://teichlab.github.io/scg_lib_structs/data/10X-Genomics/3M-february-2018.txt.gz) and mutated at a single position to a barcode not in the list, there is an $\sim 81\%$ probability that it sits at hamming distance $1$ from two or more barcodes in the permit list.
+  The probability of such collisions can be reduced by considering correcting _only_ against barcodes from the known permit list, which, themselves, occur exactly in the given sample (or even only those that occur exactly in the given sample above some nominal frequency threshold).
+  Also, information such as the base quality at the "corrected" position can be used to potentially break ties in the case of ambiguous corrections.
+  Yet, as the number of assayed cells increases, insufficient sequence diversity in the set of potential cell barcodes increases the frequency of ambiguous corrections, and reads tagged with barcodes having ambiguous corrections are most commonly discarded.
 
-2. **무릎 또는 팔꿈치 기반 방법**:
-   잠재적인 바코드 집합을 알 수 없거나, 알고 있더라도 외부 목록을 참조하지 않고 관찰된 데이터 자체에서 직접 보정하려는 경우, 고품질 바코드는 샘플에서 가장 많은 수의 리드와 연관된 바코드라는 관찰에 기반한 방법을 사용할 수 있습니다.
-   이를 달성하기 위해 바코드가 연관된 고유 리드 또는 UMI 수에 따라 내림차순으로 정렬된 누적 빈도 플롯을 구성할 수 있습니다.
-   종종 이 순위가 매겨진 누적 빈도 플롯에는 "무릎" 또는 "팔꿈치"가 포함되며, 이는 자주 발생하는 바코드와 드물게 발생하는(따라서 오류일 가능성이 있는) 바코드를 구별하는 데 사용할 수 있는 변곡점입니다.
-   이러한 변곡점을 식별하려는 많은 방법이 존재하며 {cite}`Smith2017,Lun2019,raw:He22`, 이는 적절하게 포획된 세포와 빈 드롭렛을 구별하는 가능성 있는 지점으로 간주됩니다.
-   이후, 무릎 "위"에 나타나는 바코드 집합은 허용 목록으로 처리될 수 있으며, 나머지 바코드는 위에서 언급한 첫 번째 방법과 같이 이 목록에 대해 보정될 수 있습니다.
-   이러한 접근 방식은 외부 허용 목록이 있는 화학과 없는 화학 모두에 적용할 수 있으므로 유연합니다.
-   무릎 찾기 알고리즘의 추가 매개변수를 변경하여 더 많거나 적은 제한적인 선택된 바코드 집합을 생성할 수 있습니다.
-   그러나 이러한 접근 방식은 지나치게 보수적인 경향이 있고 명확한 무릎이 없는 샘플에서는 견고하게 작동하지 못하는 등 특정 단점이 있을 수 있습니다.
+2. **Knee or elbow-based methods**:
+   If a set of potential barcodes is unknown - or even if it is known, but one wishes to correct directly from the observed data itself without consulting an external list - one can use a method based on the observation that high-quality barcodes are those associated with the highest number of reads in the sample.
+   To achieve this, one can construct a cumulative frequency plot where barcodes are sorted in descending order based on the number of distinct reads or UMIs they are associated with.
+   Often, this ranked cumulative frequency plot will contain a "knee" or "elbow" – an inflection point that can be used to characterize frequently occurring barcodes from infrequent (and therefore likely erroneous) barcodes.
+   Many methods exist for attempting to identify such an inflection point {cite}`Smith2017,Lun2019,raw:He2022` as a likely point of discrimination between properly captured cells and empty droplets.
+   Subsequently, the set of barcodes that appear "above" the knee can be treated as a permit list against which the rest of the barcodes may be corrected, as in the first method list above.
+   Such an approach is flexible as it can be applied in chemistries that have an external permit list and those that don't.
+   Further parameters of the knee-finding algorithms can be altered to yield more or less restrictive selected barcode sets.
+   Yet, such an approach can have certain drawbacks, like a tendency to be overly conservative and sometimes failing to work robustly in samples where no clear knee is present.
 
-3. **예상 세포 수에 기반한 필터링 및 보정**:
-   바코드 빈도 분포에 명확한 무릎이 없거나 기술적 인공물로 인해 이봉 패턴을 보이는 경우, 사용자 제공 예상 세포 수에 의해 바코드 보정을 안내할 수 있습니다.
-   이러한 접근 방식에서 사용자는 예상되는 분석 세포 수의 추정치를 제공합니다.
-   그런 다음, 바코드는 빈도 내림차순으로 정렬되고, 예상 세포 수에 가까운 견고한 분위수 인덱스에서 빈도 $f$를 얻고, $f$의 작은 상수 분수 내의 빈도를 갖는 모든 세포(예: $\ge \frac{f}{10}$)가 유효한 바코드로 간주됩니다.
-   다시, 나머지 바코드는 서열 유사성에 기반하여 이러한 유효한 바코드 중 하나에 고유하게 보정하려고 시도하여 이 유효한 목록에 대해 보정됩니다.
+3. **Filtering and correction based on an expected cell count**:
+   When barcode frequency distributions lack a clear knee or show bimodal patterns due to technical artifacts, barcode correction can be guided by a user-provided expected cell count.
+   In such an approach, the user provides an estimate of the expected number of assayed cells.
+   Then, the barcodes are ordered by descending frequency, the frequency $f$ at a robust quantile index near the expected cell count is obtained, and all cells having a frequency within a small constant fraction of $f$ (e.g., $\ge \frac{f}{10}$) are considered as valid barcodes.
+   Again, the remaining barcodes are corrected against this valid list by attempting to correct uniquely to one of these valid barcodes based on sequence similarity.
 
-4. **강제적인 유효 세포 수에 기반한 필터링**:
-   가장 간단한 접근 방식이지만 잠재적으로 문제가 있을 수 있는 것은 사용자가 유효한 바코드 수를 수동으로 지정하는 것입니다.
+4. **Filtering based on a forced number of valid cells**:
+   The simplest approach, although potentially problematic, is for the user to manually specify the number of valid barcodes.
 
-- 사용자는 정렬된 바코드 빈도 목록에서 인덱스를 선택합니다.
-- 이 임계값 이상의 모든 바코드는 유효한 것으로 간주됩니다.
-- 나머지 바코드는 표준 유사성 기반 보정 방법을 사용하여 이 목록에 대해 보정됩니다.
-  이는 최소 n개의 세포 선택을 보장하지만, 선택한 임계값이 실제 세포 수를 정확하게 반영한다고 가정합니다.
-  사용자가 제공된 인덱스 주변에서 임계 빈도를 설정해야 한다고 믿을 만한 충분한 이유가 있는 경우에만 합리적입니다.
+- The user chooses an index in the sorted barcode frequency list.
+- All barcodes above this threshold are considered valid.
+- Remaining barcodes are corrected against this list using standard similarity-based correction methods.
+  While this guarantees selection of at least n cells, it assumes that the chosen threshold accurately reflects the number of real cells.
+  It is only reasonable if the user has a good reason to believe that the threshold frequency should be set around the provided index.
 
 (raw-proc:umi-resolution)=
 
-## UMI 분해
+## UMI resolution
 
-세포 바코드(CB) 보정 후, 리드는 폐기되거나 보정된 CB에 할당되었습니다.
-이후, 각 보정된 CB 내에서 각 유전자의 풍부도를 정량화하고자 합니다.
+After cell barcode (CB) correction, reads have either been discarded or assigned to a corrected CB.
+Subsequently, we wish to quantify the abundance of each gene within each corrected CB.
 
-{ref}`exp-data:transcript-quantification`에서 논의된 {term}`증폭 편향` 때문에, 샘플링된 분자의 실제 수를 평가하기 위해 UMI를 기반으로 리드를 중복 제거해야 합니다({numref}`umi-figure`). 또한, 이 추정을 수행하려고 할 때 몇 가지 다른 복잡한 요인이 문제를 제기합니다.
+Because of the {term}`amplification bias` as discussed in {ref}`exp-data:transcript-quantification`, reads must be deduplicated, based upon their UMI, to assess the true count of sampled molecules ({numref}`umi-figure`). Additionally, several other complicating factors present challenges when attempting to perform this estimation.
 
-UMI 중복 제거 단계는 실험에서 포획 및 시퀀싱된 각 세포의 각 원래, 사전 PCR 분자에서 파생된 리드 및 UMI 집합을 식별하는 것을 목표로 합니다.
-이 프로세스의 결과는 각 세포의 각 유전자에 분자 수를 할당하는 것이며, 이는 이후 다운스트림 분석에서 이 유전자의 원시 발현 추정치로 사용됩니다.
-관찰된 UMI 및 관련 매핑된 리드의 모음을 보고 각 유전자에서 발생하는 원래 관찰된 분자 수를 추론하려는 이 프로세스를 _UMI 분해_ 프로세스라고 합니다.
+The UMI deduplication step aims to identify the set of reads and UMIs derived from each original, pre-PCR molecule in each cell captured and sequenced in the experiment.
+The result of this process is to allocate a molecule count to each gene in each cell, which is subsequently used in the downstream analysis as the raw expression estimate for this gene.
+We refer to this process of looking at the collection of observed UMIs and their associated mapped reads and attempting to infer the original number of observed molecules arising from each gene as the process of _UMI resolution_.
 
-설명을 단순화하기 위해, 참조(예: 유전자의 게놈 좌위)에 매핑되는 리드를 해당 참조의 리드라고 하고, 그들의 UMI 태그를 해당 참조의 UMI라고 합니다.
-특정 UMI와 관련된 리드 집합을 해당 UMI의 리드라고 합니다.
+To simplify the explanation, reads that map to a reference (e.g., a genomic locus of a gene) are referred to as the reads of that reference, and their UMI tags are called the UMIs of that reference.
+The set of reads associated with a specific UMI is referred to as the reads of that UMI.
 
-리드는 하나의 UMI로만 태그될 수 있지만, 둘 이상의 참조에 매핑되는 경우 여러 참조에 속할 수 있습니다.
-또한, scRNA-seq에서의 분자 바코딩은 일반적으로 각 세포에 대해 격리되고 독립적이므로(이전에 논의된 세포 바코드 해결의 어려움은 제외), _UMI 분해_는 일반성을 잃지 않고 단일 세포에 대해 설명됩니다.
-이 동일한 절차는 일반적으로 모든 세포에 독립적으로 적용됩니다.
+A read can be tagged by only one UMI but may belong to multiple references if it maps to more than one.
+Additionally, since molecule barcoding in scRNA-seq is typically isolated and independent for each cell (aside from the previously discussed challenges in resolving cell barcodes), _UMI resolution_ will be explained for a single cell without loss of generality.
+This same procedure is generally applied to all cells independently.
 
 ```{figure} ../_static/images/raw_data_processing/UMI.png
 :name: umi-figure
-:alt: 그림 UMI
+:alt: Figure UMIs
 :with: 100%
 
 
-UMI는 원래 분자를 추적하여 PCR 증폭 편향을 줄이지만, 다른 유형의 오류(파란색 상자)의 영향을 받을 수 있습니다.
-UMI 태그의 뉴클레오티드 치환은 증폭 또는 시퀀싱 중에 발생할 수 있습니다.
-다중 매핑은 동일한 UMI를 공유하는 리드가 다른 유전자(파란색과 빨간색)에 매핑될 때, 단일 리드가 여러 유전자(회색)에 매핑될 때, 또는 둘 다일 때 발생할 수 있습니다.
+UMIs reduce PCR amplification bias by tracking original molecules, but can be affected by different types of errors (blue boxes).
+Nucleotide substitutions in UMI tags may occur during amplification or sequencing.
+Multimapping can arise when reads sharing the same UMI are mapped to different genes (blue and red), when a single read maps to multiple genes (gray), or both.
 ```
 
 (raw-proc:need-for-umi-resolution)=
 
-### UMI 분해의 필요성
+### The need for UMI resolution
 
-이상적인 경우, 올바른(변경되지 않은) UMI가 리드를 태그하고, 각 UMI의 리드가 공통 참조 유전자에 고유하게 매핑되며, UMI와 사전 PCR 분자 사이에 전단사 함수가 있는 경우입니다.
-결과적으로, UMI 중복 제거 절차는 개념적으로 간단합니다. UMI의 리드는 단일 사전 PCR 분자의 PCR 중복입니다.
-각 유전자의 포획 및 시퀀싱된 분자 수는 이 유전자에 대해 관찰된 고유 UMI 수입니다.
+In the ideal case, where the correct (unaltered) UMIs tag reads, the reads of each UMI uniquely map to a common reference gene, and there is a bijection between UMIs and pre-PCR molecules.
+Consequently, the UMI deduplication procedure is conceptually straightforward: the reads of a UMI are the PCR duplicates from a single pre-PCR molecule.
+The number of captured and sequenced molecules of each gene is the number of distinct UMIs observed for this gene.
 
-그러나 실제로 발생하는 문제로 인해 위에서 설명한 간단한 규칙은 일반적으로 UMI의 유전자 기원을 식별하는 데 불충분하며, 더 정교한 모델 개발이 필요합니다({numref}`umi-figure`).
+However, the problems encountered in practice make the simple rules described above insufficient for identifying the gene origin of UMIs in general and necessitate the development of more sophisticated models ({numref}`umi-figure`):
 
-- **UMI의 오류**:
-  이는 시퀀싱된 리드의 UMI 태그에 PCR 또는 시퀀싱 과정에서 도입된 오류가 포함될 때 발생합니다.
-  일반적인 UMI 오류에는 PCR 중 뉴클레오티드 치환 및 시퀀싱 중 리드 오류가 포함됩니다.
-  이러한 UMI 오류를 해결하지 못하면 추정된 분자 수가 부풀려질 수 있습니다 {cite}`Smith2017,ziegenhain2022molecular`.
+- **Errors in UMIs**:
+  These occur when the sequenced UMI tag of reads contains errors introduced during PCR or the sequencing process.
+  Common UMI errors include nucleotide substitutions during PCR and read errors during sequencing.
+  Failing to address such UMI errors can inflate the estimated number of molecules {cite}`Smith2017,ziegenhain2022molecular`.
 
-- **다중 매핑**:
-  이 문제는 리드 또는 UMI가 여러 참조(예: 다중 유전자 리드/UMI)에 속하는 경우에 발생합니다.
-  이는 UMI의 다른 리드가 다른 유전자에 매핑될 때, 리드가 여러 유전자에 매핑될 때, 또는 둘 다일 때 발생합니다.
-  이 문제의 결과는 다중 유전자 리드/UMI의 유전자 기원이 모호하여 해당 유전자의 샘플링된 사전 PCR 분자 수에 대한 불확실성을 초래한다는 것입니다.
-  다중 유전자 리드/UMI를 단순히 폐기하면 데이터 손실이나 서열이 유사한 유전자 패밀리와 같이 다중 매핑 리드를 생성하는 경향이 있는 유전자 간의 편향된 추정으로 이어질 수 있습니다 {cite}`Srivastava2019`.
+- **Multimapping**:
+  This issue arises in cases where a read or UMI belongs to multiple references (e.g., multi-gene reads/UMIs).
+  This happens when different reads of a UMI map to different genes, when a read maps to multiple genes, or both.
+  The consequence of this issue is that the gene origin of the multi-gene reads/UMIs is ambiguous, which results in uncertainty about the sampled pre-PCR molecule count of those genes.
+  Simply discarding multi-gene reads/UMIs can lead to a loss of data or a biased estimate among genes that tend to produce multimapping reads, such as sequence-similar gene families {cite}`Srivastava2019`.
 
-```{admonition} UMI 오류에 대한 참고 사항
-UMI 오류, 특히 뉴클레오티드 치환 및 오판으로 인한 오류는 단일 세포 실험에서 널리 퍼져 있습니다.
-{cite:t}`Smith2017`는 테스트된 단일 세포 실험에서 관찰된 UMI 서열 간의 평균 염기 차이(편집 거리)가 무작위로 샘플링된 UMI 서열보다 낮고, 낮은 편집 거리의 농축은 PCR 증폭 정도와 잘 상관관계가 있음을 입증했습니다.
-다중 매핑은 단일 세포 데이터에도 존재하며, 고려 중인 유전자에 따라 사소하지 않은 비율로 발생할 수 있습니다.
-{cite:t}`Srivastava2019`는 다중 매핑 리드를 폐기하면 예측된 분자 수를 부정적으로 편향시킬 수 있음을 보여주었습니다.
+```{admonition} A Note on UMI Errors
+UMI errors, especially those due to nucleotide substitutions and miscallings, are prevalent in single-cell experiments.
+{cite:t}`Smith2017` establish that the average number of bases different (edit distance) between the observed UMI sequences in the tested single-cell experiments is lower than randomly sampled UMI sequences, and the enrichment of low edit distances is well correlated with the degree of PCR amplification.
+Multimapping also exists in single-cell data and, depending upon the gene being considered, can occur at a non-trivial rate.
+{cite:t}`Srivastava2019` show that discarding the multimapping reads can negatively bias the predicted molecule counts.
 ```
 
-"수렴" 및 "발산" UMI 충돌과 같이 여기서는 다루지 않는 다른 문제가 있습니다.
-동일한 UMI가 동일한 세포에서 동일한 유전자에서 발생하는 두 개의 다른 사전 PCR 분자를 태그하는 경우를 수렴 충돌로 간주합니다.
-둘 이상의 고유한 UMI가 동일한 사전 PCR 분자에서 발생하는 경우, 예를 들어 이 분자에서 여러 프라이밍 부위를 샘플링하여, 이를 발산 충돌로 간주합니다.
-수렴 UMI 충돌은 드물고 따라서 그 효과는 일반적으로 작을 것으로 예상합니다.
-또한, 전사체 수준 매핑 정보는 때때로 이러한 충돌을 해결하는 데 사용될 수 있습니다 {cite}`Srivastava2019`.
-발산 UMI 충돌은 주로 스플라이스되지 않은 전사체의 인트론에서 발생하며 {cite}`technote_10x_intronic_reads`, 이들이 제기하는 문제를 해결하기 위한 접근 방식은 활발한 연구 분야입니다 {cite}`technote_10x_intronic_reads,Gorin2021`.
+There exist other challenges that we do not focus upon here, such as "convergent" and "divergent" UMI collisions.
+We consider the case where the same UMI is used to tag two different pre-PCR molecules arising from the same gene, in the same cell, as a convergent collision.
+When two or more distinct UMIs arise from the same pre-PCR molecule, e.g., due to the sampling of multiple priming sites from this molecule, we consider this a divergent collision.
+We expect convergent UMI collisions to be rare and, therefore, their effect typically small.
+Further, transcript-level mapping information can sometimes be used to resolve such collisions {cite}`Srivastava2019`.
+Divergent UMI collisions occur primarily among introns of unspliced transcripts {cite}`technote_10x_intronic_reads`, and approaches to addressing the issues they raise are an area of active research {cite}`technote_10x_intronic_reads,Gorin2021`.
 
-UMI 사용이 고처리량 scRNA-seq 프로토콜에서 거의 보편적이고 이러한 오류를 해결하면 유전자 풍부도 추정이 향상된다는 사실을 감안할 때, 최근 문헌에서 UMI 분해 문제에 많은 관심이 집중되었습니다 {cite}`Islam2013,Bose2015,raw:Macosko2015,Smith2017,Srivastava2019,Kaminow2021,Melsted2021,raw:He2022,calib,umic,zumis`.
+Given that the use of UMIs is near ubiquitous in high-throughput scRNA-seq protocols and the fact that addressing these errors improves the estimation of gene abundances, there has been much attention paid to the problem of UMI resolution in recent literature {cite}`Islam2013,Bose2015,raw:Macosko2015,Smith2017,Srivastava2019,Kaminow2021,Melsted2021,raw:He2022,calib,umic,zumis`.
 
-```{dropdown} 그래프 기반 UMI 분해
+```{dropdown} Graph-based UMI resolution
 
 (raw-proc:graph-based-umi-resolution)=
 
-### 그래프 기반 UMI 분해
+### Graph-based UMI resolution
 
-UMI를 해결하려고 할 때 발생하는 문제의 결과로, UMI 분해 문제를 해결하기 위해 많은 방법이 개발되었습니다.
-UMI 분해에 대한 다양한 접근 방식이 있지만, 여기서는 처음에 {cite:t}`Smith2017`가 제안한 프레임워크에서 수정된 문제 인스턴스를 나타내는 프레임워크에 중점을 둘 것입니다. 이 프레임워크는 _UMI 그래프_의 개념에 의존합니다.
-이 그래프의 각 연결된 구성 요소는 UMI의 특정 하위 집합이 축소되는(즉, 동일한 사전 PCR 분자의 증거로 해결되는) 하위 문제를 나타냅니다.
-많은 인기 있는 UMI 분해 접근 방식은 그래프가 어떻게 정제되고 이 그래프에 대해 수행되는 축소 또는 분해 절차가 어떻게 작동하는지를 정확하게 수정함으로써 이 프레임워크에서 해석될 수 있습니다.
+As a result of the problems that ariOther UMI resolution approaches exist, for example, the reference-free model {cite}`umic` and the method of moments {cite}`Melsted2021`, but they may not be easily represented in this framework and are not discussed in further detail here.se when attempting to resolve UMIs, many methods have been developed to address the problem of UMI resolution.
+While there are a host of different approaches for UMI resolution, we will focus on a framework for representing problem instances, modified from a framework initially proposed by {cite:t}`Smith2017`, that relies upon the notion of a _UMI graph_.
+Each connected component of this graph represents a sub-problem wherein certain subsets of UMIs are collapsed (i.e., resolved as evidence of the same pre-PCR molecule).
+Many popular UMI resolution approaches can be interpreted in this framework by simply modifying precisely how the graph is refined and how the collapse or resolution procedure carried out over this graph works.
 
-단일 세포 데이터의 맥락에서 UMI 그래프 $G(V,E)$는 노드 집합 $V$와 에지 집합 $E$를 갖는 {term}`방향성 그래프`입니다.
-각 노드 $v_i \in V$는 리드의 동치 클래스(EC)를 나타내고, 에지 집합 $E$는 EC 간의 관계를 인코딩합니다.
-리드에 정의된 동치 관계 $\sim_r$는 UMI 및 매핑 정보를 기반으로 합니다.
-리드 $r_x$와 $r_y$는 UMI 태그가 동일하고 동일한 참조 집합에 매핑되는 경우에만 동등하다고 말하며, $r_x \sim_r r_y$입니다.
-UMI 분해 접근 방식은 "참조"를 게놈 좌위 {cite}`Smith2017`, 전사체 {cite}`Srivastava2019,raw:He22` 또는 유전자 {cite}`raw:Zheng2017,Kaminow2021`로 정의할 수 있습니다.
+In the context of single-cell data, a UMI graph $G(V,E)$ is a {term}`directed graph` with a node set $V$ and an edge set $E$.
+Each node $v_i \in V$ represents an equivalence class (EC) of reads, and the edge set $E$ encodes the relationship between the ECs.
+The equivalence relation $\sim_r$ defined on reads is based on their UMI and mapping information.
+We say reads $r_x$ and $r_y$ are equivalent, $r_x \sim_r r_y$, if and only if they have identical UMI tags and map to the same set of references.
+UMI resolution approaches may define a "reference" as a genomic locus {cite}`Smith2017`, transcript {cite}`Srivastava2019,raw:He2022` or gene {cite}`raw:Zheng2017,Kaminow2021`.
 
-UMI 그래프 프레임워크에서 UMI 분해 접근 방식은 **노드 정의**, **인접 관계 정의**, **구성 요소 해결**의 세 가지 주요 단계로 나눌 수 있습니다.
-이러한 각 단계에는 다른 접근 방식에 의해 모듈식으로 구성될 수 있는 다른 옵션이 있습니다.
-또한, 이러한 단계는 특정 유형의 매핑 모호성을 나타내는 리드 및 UMI를 폐기하거나 휴리스틱하게 할당하도록(보고된 참조 매핑 집합을 수정하여) 설계된 필터링 단계가 선행(및/또는 후행)될 수 있습니다.
+In the UMI graph framework, a UMI resolution approach can be divided into three major steps:
+**defining nodes**, **defining adjacency relationships**, and **resolving components**.
+Each of these steps has different options that can be modularly composed by different approaches.
+Additionally, these steps may sometimes be preceded (and/or followed) by filtering steps designed to discard or heuristically assign (by modifying the set of reference mappings reported) reads and UMIs exhibiting certain types of mapping ambiguity.
 
 (raw-proc:umi-graph-node-def)=
 
-#### 노드 정의
+#### Defining nodes
 
-위에서 설명한 바와 같이, 노드 $v_i \in V$는 리드의 동치 클래스입니다.
-따라서, $V$는 매핑된 리드의 전체 또는 필터링된 집합과 관련 _보정되지 않은_ UMI를 기반으로 정의될 수 있습니다.
-참조 집합과 UMI 태그를 기반으로 동치 관계 $\sim_r$를 만족하는 모든 리드는 동일한 정점 $v \in V$와 연관됩니다.
-EC는 UMI가 다중 유전자 UMI인 경우 다중 유전자 EC입니다.
-일부 접근 방식은 노드 생성 전에 리드를 필터링하거나 휴리스틱하게 할당하여 이러한 EC 생성을 피하는 반면, 다른 접근 방식은 이러한 모호한 정점을 유지하고 처리하며 절약, 확률적 할당 또는 관련 규칙이나 모델을 기반으로 유전자 기원을 해결하려고 시도합니다 {cite}`Srivastava2019,Kaminow2021,raw:He22`.
+As described above, a node $v_i \in V$ is an equivalence class of reads.
+Therefore, $V$ can be defined based on the full or filtered set of mapped reads and their associated _uncorrected_ UMIs.
+All reads that satisfy the equivalence relation $\sim_r$ based on their reference set and UMI tag are associated with the same vertex $v \in V$.
+An EC is a multi-gene EC if its UMI is a multi-gene UMI.
+Some approaches will avoid the creation of such ECs by filtering or heuristically assigning reads prior to node creation, while other approaches will retain and process these ambiguous vertices and attempt and resolve their gene origin via parsimony, probabilistic assignment, or based on a related rule or model {cite}`Srivastava2019,Kaminow2021,raw:He2022`.
 
 (raw-proc:umi-graph-edge-def)=
 
-#### 인접 관계 정의
+#### Defining the adjacency relationship
 
-UMI 그래프의 노드 집합 $V$를 생성한 후, $V$의 노드 인접성은 UMI 서열 간의 거리(일반적으로 해밍 또는 편집 거리)와 선택적으로 관련 참조 집합의 내용을 기반으로 정의됩니다.
+After creating the node set $V$ of a UMI graph, the adjacency of nodes in $V$ is defined based on the distance, typically the Hamming or edit distance, between their UMI sequences and, optionally, the content of their associated reference sets.
 
-여기서 노드 $v_i \in V$에 대해 다음 함수를 정의합니다.
+Here we define the following functions on the node $v_i \in V$:
 
-- $u(v_i)$는 $v_i$의 UMI 태그입니다.
-- $c(v_i) = |v_i|$는 $v_i$의 카디널리티, 즉 $\sim_r$ 하에서 동등한 $v_i$와 관련된 리드 수입니다.
-- $m(v_i)$는 $v_i$에 대한 매핑 정보에 인코딩된 참조 집합입니다.
-- $D(v_i, v_j)$는 $u(v_i)$와 $u(v_j)$ 사이의 거리이며, 여기서 $v_j \in V$입니다.
+- $u(v_i)$ is the UMI tag of $v_i$.
+- $c(v_i) = |v_i|$ is the cardinality of $v_i$, i.e., the number of reads associated with $v_i$ that are equivalent under $\sim_r$.
+- $m(v_i)$ is the reference set encoded in the mapping information, for $v_i$.
+- $D(v_i, v_j)$ is the distance between $u(v_i)$ and $u(v_j)$, where $v_j \in V$.
 
-이러한 함수 정의가 주어지면, $v_i, v_j \in V$인 임의의 두 노드는 $m(v_i) \cap m(v_j) \ne \emptyset$이고 $D(v_i,v_j) \le \theta$인 경우에만 양방향 에지로 연결됩니다. 여기서 $\theta$는 거리 임계값이며 종종 $\theta=1$로 설정됩니다 {cite}`Smith2017,Kaminow2021,Srivastava2019`.
-또한, $c(v_i) \ge 2c(v_j) -1$인 경우 양방향 에지는 $v_i$에서 $v_j$로의 방향성 에지로 대체될 수 있으며 그 반대도 마찬가지입니다 {cite}`Smith2017,Srivastava2019`.
-이러한 에지 정의가 가장 일반적이지만, $u$, $c$, $m$, $D$ 함수에 의해 완전히 정의되는 한 다른 정의도 가능합니다. $V$와 $E$가 있으면 UMI 그래프 $G = (V,E)$가 이제 정의됩니다.
+Given these function definitions, any two nodes $v_i, v_j \in V$ will be incident with a bi-directed edge if and only if $m(v_i) \cap m(v_j) \ne \emptyset$ and $D(v_i,v_j) \le \theta$, where $\theta$ is a distance threshold and is often set as $\theta=1$ {cite}`Smith2017,Kaminow2021,Srivastava2019`.
+Additionally, the bi-directed edge might be replaced by a directed edge incident from $v_i$ to $v_j$ if $c(v_i) \ge 2c(v_j) -1$ or vice versa {cite}`Smith2017,Srivastava2019`.
+Though these edge definitions are among the most common, others are possible, so long as they are completely defined by the $u$, $c$, $m$, and $D$ functions. With $V$ and $E$ in hand, the UMI graph $G = (V,E)$ is now defined.
 
 (raw-proc:umi-graph-resolution-def)=
 
-#### 그래프 분해 접근 방식 정의
+#### Defining the graph resolution approach
 
-정의된 UMI 그래프가 주어지면, 많은 다른 분해 접근 방식이 적용될 수 있습니다.
-분해 방법은 연결된 구성 요소를 찾는 것, 그래프를 클러스터링하는 것, 탐욕스럽게 노드를 축소하거나 에지를 수축시키는 것 {cite}`Smith2017`만큼 간단할 수도 있고, 그래프를 줄이기 위해 특정 규칙을 따르는 구조(예: 단색 수형도 {cite}`Srivastava2019`)로 그래프의 커버를 찾는 것일 수도 있습니다.
-결과적으로, 축소된 UMI 그래프의 각 노드 또는 그래프가 동적으로 수정되지 않는 경우 커버의 각 요소는 사전 PCR 분자를 나타냅니다.
-축소된 노드 또는 커버링 집합은 해당 분자의 PCR 중복으로 간주됩니다.
+Given the defined UMI graph, many different resolution approaches may be applied.
+A resolution method may be as simple as finding the set of connected components, clustering the graph, greedily collapsing nodes or contracting edges {cite}`Smith2017`, or searching for a cover of the graph by structures following certain rules (e.g., monochromatic arboresences {cite}`Srivastava2019`) to reduce the graph.
+As a result, each node in the reduced UMI graph, or each element in the cover in the case that the graph is not modified dynamically, represents a pre-PCR molecule.
+The collapsed nodes or covering sets are regarded as the PCR duplicates of that molecule.
 
-인접 관계를 정의하는 다른 규칙과 그래프 분해 자체에 대한 다른 접근 방식은 다른 속성을 보존하려고 할 수 있으며, 다양한 고유한 전체 UMI 분해 접근 방식을 정의할 수 있습니다.
-다중 매핑으로 인한 모호성을 확률적으로 해결하는 접근 방식의 경우, 해결된 UMI 그래프는 다중 유전자 동치 클래스(EC)를 포함할 수 있으며, 이들의 유전자 기원은 다음 단계에서 결정됩니다.
+Different rules for defining the adjacency relationship and different approaches for graph resolution itself can seek to preserve different properties and can define a wide variety of distinct overall UMI resolution approaches.
+For approaches that probabilistically resolve ambiguity caused by multimapping, the resolved UMI graph may contain multi-gene equivalence classes (ECs), with their gene origins determined in the next step.
 
 ```
 
 (raw-proc:umi-graph-quantification)=
 
-#### 정량화
+#### Quantification
 
-UMI 분해의 마지막 단계는 해결된 UMI 그래프를 사용하여 각 유전자의 풍부도를 정량화하는 것입니다.
-다중 유전자 EC를 폐기하는 접근 방식의 경우, 처리 중인 현재 세포의 유전자에 대한 분자 수 벡터(또는 줄여서 카운트 벡터)는 각 유전자로 레이블이 지정된 EC 수를 계산하여 생성됩니다.
-반면에, 다중 유전자 EC를 폐기하는 대신 처리하는 접근 방식은 일반적으로 일부 통계적 추론 절차를 적용하여 모호성을 해결합니다.
-예를 들어, {cite:t}`Srivastava2019`는 다중 유전자 UMI를 확률적으로 할당하기 위한 기대-최대화(EM) 접근 방식을 도입했으며, 관련 EM 알고리즘은 후속 도구에서 선택적 단계로 도입되었습니다 {cite}`Melsted2021,Kaminow2021,raw:He22`.
-이 모델에서, 축소된 EC-유전자 할당은 잠재 변수이고, 유전자의 중복 제거된 분자 수는 주요 매개변수입니다.
-직관적으로, 유전자 고유 EC의 증거는 다중 유전자 EC를 확률적으로 분배하는 데 도움이 될 것입니다.
-EM 알고리즘은 관찰된 EC를 생성할 (지역적으로) 가장 높은 가능성을 가진 매개변수를 찾습니다.
+The last step in UMI resolution is quantifying the abundance of each gene using the resolved UMI graph.
+For approaches that discard multi-gene ECs, the molecule count vector for the genes in the current cell being processed (or count vector for short) is generated by counting the number of ECs labeled with each gene.
+On the other hand, approaches that process, rather than discard, multi-gene ECs usually resolve the ambiguity by applying some statistical inference procedure.
+For example, {cite:t}`Srivastava2019` introduce an expectation-maximization (EM) approach for probabilistically assigning multi-gene UMIs, and related EM algorithms have also been introduced as optional steps in subsequent tools {cite}`Melsted2021,Kaminow2021,raw:He2022`.
+In this model, the collapsed-EC-to-gene assignments are latent variables, and the deduplicated molecule count of genes are the main parameters.
+Intuitively, evidence from gene-unique ECs will be used to help probabilistically apportion the multi-gene ECs.
+The EM algorithm seeks the parameters that together have the (locally) highest likelihood of generating the observed ECs.
 
-일반적으로 위에서 설명한 UMI 분해 및 정량화 프로세스는 모든 유전자에 대한 완전한 카운트 행렬을 만들기 위해 보정된 CB로 표시되는 각 세포에 대해 개별적으로 수행됩니다.
-그러나 고처리량 단일 세포 샘플의 세포당 정보 부족은 UMI 분해를 수행할 때 사용 가능한 증거를 제한하며, 이는 위에서 설명한 통계적 추론 절차와 같은 모델 기반 솔루션의 잠재적 효능을 제한합니다.
+Usually, the UMI resolution and quantification process described above will be performed separately for each cell, represented by a corrected CB, to create a complete count matrix for all genes in all cells.
+However, the relative paucity of per-cell information in high-throughput single-cell samples limits the evidence available when performing UMI resolution, which in turn limits the potential efficacy of model-based solutions like the statistical inference procedure described above.
 
 (raw-proc:count-qc)=
 
-## 카운트 행렬 품질 관리
+## Count matrix quality control
 
-카운트 행렬이 생성되면 품질 관리(QC) 평가를 수행하는 것이 중요합니다.
-일반적으로 품질 관리라는 명목 하에 여러 가지 별개의 평가가 있습니다.
-기본적인 전역 메트릭은 종종 시퀀싱 측정 자체의 전반적인 품질을 평가하는 데 도움이 되도록 기록되고 보고됩니다.
-이러한 메트릭은 매핑된 리드의 총 비율, 세포당 관찰된 고유 UMI 분포, UMI 중복 제거율 분포, 세포당 검출된 유전자 분포 등과 같은 양으로 구성됩니다.
-이러한 메트릭과 유사한 메트릭은 리드 매핑, 세포 바코드 보정 및 UMI 분해 과정에서 자연스럽게 발생하고 계산될 수 있으므로 정량화 도구 자체에 의해 종종 기록됩니다 {cite}`raw:Zheng2017,Kaminow2021,Melsted2021,raw:He22`.
-마찬가지로, 사용 중인 정량화 파이프라인에 따라 [Loupe 브라우저](https://support.10xgenomics.com/single-cell-gene-expression/software/visualization/latest/what-is-loupe-cell-browser), [alevinQC](https://github.com/csoneson/alevinQC) 또는 [kb_python 보고서](https://github.com/pachterlab/kb_python)와 같이 이러한 기본 메트릭을 구성하고 시각화하는 데 도움이 되는 여러 도구가 있습니다.
-이러한 기본 전역 메트릭 외에도 분석의 이 단계에서 QC 메트릭은 주로 어떤 세포(CB)가 "성공적으로" 시퀀싱되었는지, 어떤 세포가 필터링 또는 보정이 필요한 인공물을 나타내는지 결정하는 데 도움이 되도록 설계되었습니다.
+Once a count matrix has been generated, it is important to perform a quality control (QC) assessment.
+There are several distinct assessments that generally fall under the rubric of quality control.
+Basic global metrics are often recorded and reported to help assess the overall quality of the sequencing measurement itself.
+These metrics consist of quantities such as the total fraction of mapped reads, the distribution of distinct UMIs observed per cell, the distribution of UMI deduplication rates, the distribution of detected genes per cell, etc.
+These and similar metrics are often recorded by the quantification tools themselves {cite}`raw:Zheng2017,Kaminow2021,Melsted2021,raw:He2022` since they arise naturally and can be computed during the process of read mapping, cell barcode correction, and UMI resolution.
+Likewise, there exist several tools to help organize and visualize these basic metrics, such as the [Loupe browser](https://support.10xgenomics.com/single-cell-gene-expression/software/visualization/latest/what-is-loupe-cell-browser), [alevinQC](https://github.com/csoneson/alevinQC), or a [kb_python report](https://github.com/pachterlab/kb_python), depending upon the quantification pipeline being used.
+Beyond these basic global metrics, at this stage of analysis, QC metrics are designed primarily to help determine which cells (CBs) have been sequenced "successfully", and which exhibit artifacts that warrant filtering or correction.
 
-다음 토글 섹션에서는 `alevinQC` [매뉴얼 웹페이지](https://github.com/csoneson/alevinQC)에서 가져온 예제 alevinQC 보고서에 대해 논의합니다.
+In the following toggle section, we discuss an example alevinQC report taken from the `alevinQC` [manual webpage](https://github.com/csoneson/alevinQC).
 
 ```{toggle}
 
-`alevin` 또는 `alevin-fry`가 단일 세포 데이터를 정량화하면, 데이터의 품질은 R 패키지 [`alevinQC`](https://github.com/csoneson/alevinQC)를 통해 평가할 수 있습니다.
-alevinQC 보고서는 PDF 형식 또는 R/Shiny 애플리케이션으로 생성될 수 있으며, 리드, CB, UMI와 같은 단일 세포 라이브러리의 다양한 구성 요소를 요약합니다.
+Once `alevin` or `alevin-fry` quantifies the single-cell data, the quality of the data can be assessed through the R package [`alevinQC`](https://github.com/csoneson/alevinQC).
+The alevinQC report can be generated in PDF format or as R/Shiny applications, which summarizes various components of the single-cell library, such as reads, CBs, and UMIs.
 
-**1. 메타데이터 및 요약 테이블**
+**1. Metadata and summary tables**
 
 :::{figure-md} raw-proc-fig-alevinqc-summary
-<img src="../_static/images/raw_data_processing/alevinQC_summary.png" alt="AlevinQC 요약" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/alevinQC_summary.png" alt="AlevinQC Summary" class="bg-primary mb-1" width="800px">
 
-alevinQC 보고서의 요약 섹션 예.
+An example of the summary section of an alevinQC report.
 :::
 
-alevinQC 보고서의 첫 번째 섹션은 입력 파일 및 처리 결과의 요약을 보여주며, 그 중 왼쪽 상단 테이블은 정량화 결과에 대해 `alevin`(또는 `alevin-fry`)에서 제공한 메타데이터를 표시합니다.
-예를 들어, 여기에는 실행 시간, 도구 버전, 입력 FASTQ 및 인덱스 파일 경로가 포함됩니다.
-오른쪽 상단 요약 테이블은 시퀀싱 리드 수, 다양한 수준의 필터링에서 선택된 세포 바코드 수, 중복 제거된 총 UMI 수와 같은 단일 세포 라이브러리의 다양한 구성 요소에 대한 요약 통계를 제공합니다.
+The first section of an alevinQC report shows a summary of the input files and the processing result, among which, the top left table displays the metadata provided by `alevin` (or `alevin-fry`) for the quantification results.
+For example, this includes the time of the run, the version of the tool, and the path to the input FASTQ and index files.
+The top right summary table provides the summary statistics for various components of the single-cell library, for example, the number of sequencing reads, the number of selected cell barcodes at various levels of filtering, and the total number of deduplicated UMIs.
 
-**2. 무릎 플롯, 초기 화이트리스트 결정**
+**2. Knee plot, initial whitelist determination**
 
 :::{figure-md} raw-proc-fig-alevinqc-plots
-<img src="../_static/images/raw_data_processing/alevinQC_plots.png" alt="AlevinQC 플롯" class="bg-primary mb-1" width="800px">
+<img src="../_static/images/raw_data_processing/alevinQC_plots.png" alt="AlevinQC Plots" class="bg-primary mb-1" width="800px">
 
-"무릎" 찾기 방법을 사용하여 세포를 필터링한 예제 단일 세포 데이터셋의 alevinQC 보고서 플롯을 보여줍니다.
-각 점은 보정된 프로파일과 함께 보정된 세포 바코드를 나타냅니다.
+The figure shows the plots in the alevinQC report of an example single-cell dataset, of which the cells are filtered using the "knee" finding method.
+Each dot represents a corrected cell barcode with its corrected profile.
 :::
 
-{numref}`raw-proc-fig-alevinqc-plots`의 첫 번째(왼쪽 상단) 보기는 세포 바코드 빈도 분포를 감소 순으로 보여줍니다.
-위에 표시된 모든 플롯에서 각 점은 보정된 세포 바코드를 나타내며, x 좌표는 세포 바코드 빈도 순위에 해당합니다.
-왼쪽 상단 플롯에서 y 좌표는 보정된 바코드의 관찰된 빈도에 해당합니다.
-일반적으로 이 플롯은 "무릎"과 같은 패턴을 보여주며, 이는 고품질 바코드의 초기 목록을 식별하는 데 사용될 수 있습니다.
-플롯의 빨간색 점은 "무릎" 기반 필터링이 적용된 경우 고품질 세포 바코드로 선택된 세포 바코드를 나타냅니다.
-즉, 이러한 세포 바코드는 고품질로 간주되고 실제로 존재하는 세포에서 유래했을 가능성이 있는 충분한 수의 리드를 포함합니다.
-CB 보정 단계에서 외부 허용 목록이 전달되면, 이는 고품질 세포 바코드를 구별하는 데 내부 알고리즘이 사용되지 않았음을 의미합니다.
-이 경우, 이러한 모든 보정된 세포 바코드는 원시 데이터 처리 파이프라인 전체에서 처리되고 유전자 카운트 행렬에 보고되므로 플롯의 모든 점이 빨간색으로 표시됩니다.
-모든 세포 바코드에 걸쳐 빈도가 지속적으로 낮으면 데이터 품질에 대해 회의적이어야 합니다.
+The first (top left) view in {numref}`raw-proc-fig-alevinqc-plots` shows the distribution of cell barcode frequency in decreasing order.
+In all plots shown above, each point represents a corrected cell barcode, with its x-coordinate corresponding to its cell barcode frequency rank.
+In the top left plot, the y-coordinate corresponds to the observed frequency of the corrected barcode.
+Generally, this plot shows a "knee"-like pattern, which can be used to identify the initial list of high-quality barcodes.
+The red dots in the plot represent the cell barcodes selected as the high-quality cell barcodes in the case that "knee"-based filtering was applied.
+In other words, these cell barcodes contain a sufficient number of reads to be deemed high-quality and likely derived from truly present cells.
+Suppose an external permit list is passed in the CB correction step, which implies no internal algorithm was used to distinguish high-quality cell barcodes.
+In that case, all dots in the plot will be colored red, as all these corrected cell barcodes are processed throughout the raw data processing pipeline and reported in the gene count matrix.
+One should be skeptical of the data quality if the frequency is consistently low across all cell barcodes.
 
-**3. 바코드 축소**
+**3. Barcode collapsing**
 
-처리될 바코드 식별 후, 내부 임계값(예: "무릎" 기반 방법) 또는 외부 화이트리스트를 통해 `alevin`(또는 `alevin-fry`)은 세포 바코드 서열 보정을 수행합니다.
-{numref}`raw-proc-fig-alevinqc-plots`의 위쪽 중간 플롯인 바코드 축소 플롯은 세포 바코드 서열 보정 후와 보정 전 세포 바코드에 할당된 리드 수를 보여줍니다.
-일반적으로 모든 점이 $x = y$를 나타내는 선에 가깝게 떨어지는 것을 볼 수 있으며, 이는 CB 보정의 재할당이 일반적으로 세포 바코드의 프로파일을 크게 변경하지 않음을 의미합니다.
+After identification of the barcodes that will be processed, either through an internal threshold (e.g., from the "knee"-based method) or through external whitelisting, `alevin` (or `alevin-fry`) performs cell barcode sequence correction.
+The barcode collapsing plot, the upper middle plot in the {numref}`raw-proc-fig-alevinqc-plots`, shows the number of reads assigned to a cell barcode after sequence correction of the cell barcodes versus prior to correction.
+Generally, we would see that all points fall close to the line representing $x = y$, which means that the reassignments in CB correction usually do not drastically change the profile of the cell barcodes.
 
-**4. 무릎 플롯, 세포당 유전자 수**
+**4. Knee Plot, number of genes per cell**
 
-{numref}`raw-proc-fig-alevinqc-plots`의 오른쪽 상단 플롯은 처리된 모든 세포 바코드의 관찰된 유전자 수 분포를 보여줍니다.
-일반적으로 세포당 평균 $2,000$개의 유전자는 다운스트림 분석에 대해 겸손하지만 합리적인 것으로 간주됩니다.
-모든 세포의 관찰된 유전자 수가 적으면 데이터 품질을 다시 확인해야 합니다.
+The upper right plot in {numref}`raw-proc-fig-alevinqc-plots` shows the distribution of the number of observed genes of all processed cell barcodes.
+Generally, a mean of $2,000$ genes per cell is considered modest but reasonable for the downstream analyses.
+One should double-check the quality of the data if all cells have a low number of observed genes.
 
-**5. 정량화 요약**
+**5. Quantification summary**
 
-마지막으로, {numref}`raw-proc-fig-alevinqc-plots`의 하단 플롯인 일련의 정량화 요약 플롯은 산점도를 사용하여 세포 바코드 빈도, 중복 제거 후 총 UMI 수 및 총 0이 아닌 유전자 수를 비교합니다.
-일반적으로 각 플롯에서 플롯된 데이터는 양의 상관 관계를 보여야 하며, 고품질 필터링(예: 무릎 필터링)이 수행된 경우 고품질 세포 바코드는 나머지 세포 바코드와 잘 분리되어야 합니다.
-또한, 세 가지 플롯 모두 유사한 추세를 전달할 것으로 예상해야 합니다.
-외부 허용 목록을 사용하는 경우, 이러한 모든 세포 바코드는 처리되어 유전자 카운트 행렬에 보고되므로 플롯의 모든 점이 빨간색으로 표시됩니다.
-그러나 여전히 플롯 간의 상관 관계와 고품질 세포를 나타내는 점과 다른 점의 분리를 확인해야 합니다.
-이러한 모든 메트릭이 세포 전체에서 지속적으로 낮거나 이러한 플롯이 실질적으로 다른 추세를 전달하는 경우 데이터 품질에 대해 우려해야 합니다.
+Finally, a series of quantification summary plots, the bottom plots in {numref}`raw-proc-fig-alevinqc-plots`, compare the cell barcode frequency, the total number of UMIs after deduplication and the total number of non-zero genes using scatter plots.
+In general, in each plot, the plotted data should demonstrate a positive correlation, and, if high-quality filtering (e.g., knee filtering) has been performed, the high-quality cell barcodes should be well separated from the rest.
+Moreover, one should expect all three plots to convey similar trends.
+If using an external permit list, all the dots in the plots will be colored red, as all these cell barcodes are processed and reported in the gene count matrix.
+Still, we should see the correlation between the plots and the separation of the dots representing high-quality cells to others.
+If all of these metrics are consistently low across cells or if these plots convey substantially different trends, then one should be concerned about the data quality.
 
 ```
 
-### 빈 드롭렛 검출
+### Empty droplet detection
 
-첫 번째 QC 단계 중 하나는 어떤 세포 바코드가 "고신뢰도" 시퀀싱된 세포에 해당하는지 결정하는 것입니다.
-드롭렛 기반 프로토콜 {cite}`raw:Macosko2015`에서는 특정 바코드가 포획된 세포의 RNA 대신 주변 {term}`RNA`와 연관되는 것이 일반적입니다.
-이는 드롭렛이 세포를 포획하지 못할 때 발생합니다.
-이러한 빈 드롭렛은 여전히 시퀀싱된 리드를 생성하는 경향이 있지만, 이러한 리드의 특성은 적절하게 포획된 세포에 해당하는 바코드와 관련된 리드와 현저하게 다르게 보입니다.
-바코드가 빈 드롭렛에 해당하는지 여부를 평가하기 위한 많은 접근 방식이 존재합니다.
-한 가지 간단한 방법은 바코드가 연관된 고유 UMI 수의 내림차순으로 정렬된 바코드의 누적 빈도 플롯을 검사하는 것입니다.
-이 플롯에는 종종 적절하게 포획된 세포와 빈 드롭렛을 구별하는 가능성 있는 지점으로 식별될 수 있는 "무릎"이 포함됩니다 {cite}`Smith2017,raw:He22`.
-이 "무릎" 방법은 직관적이고 종종 합리적인 임계값을 추정할 수 있지만 몇 가지 단점이 있습니다.
-예를 들어, 모든 누적 히스토그램이 명백한 무릎을 표시하는 것은 아니며, 이러한 무릎을 견고하고 자동으로 감지할 수 있는 알고리즘을 설계하는 것은 악명 높게 어렵습니다.
-마지막으로, 바코드와 관련된 총 UMI 수는 바코드가 빈 세포 또는 손상된 세포와 관련되었는지 여부를 결정하는 데 가장 좋은 신호가 아닐 수 있습니다.
+One of the first QC steps is determining which cell barcodes correspond to "high-confidence" sequenced cells.
+It is common in droplet-based protocols {cite}`raw:Macosko2015` that certain barcodes are associated with ambient {term}`RNA` instead of the RNA of a captured cell.
+This happens when droplets fail to capture a cell.
+These empty droplets still tend to produce sequenced reads, although the characteristics of these reads look markedly different from those associated with barcodes corresponding to properly captured cells.
+Many approaches exist to assess whether a barcode likely corresponds to an empty droplet or not.
+One simple method is to examine the cumulative frequency plot of the barcodes, in which barcodes are sorted in descending order of the number of distinct UMIs with which they are associated.
+This plot often contains a "knee" that can be identified as a likely point of discrimination between properly captured cells and empty droplets {cite}`Smith2017,raw:He2022`.
+While this "knee" method is intuitive and can often estimate a reasonable threshold, it has several drawbacks.
+For example, not all cumulative histograms display an obvious knee, and it is notoriously difficult to design algorithms that can robustly and automatically detect such knees.
+Finally, the total UMI count associated with a barcode may not, alone, be the best signal to determine if the barcode was associated with an empty or damaged cell.
 
-이로 인해 빈 드롭렛 또는 손상된 드롭렛, 또는 일반적으로 "품질이 낮은" 것으로 간주되는 세포를 감지하도록 특별히 설계된 여러 도구가 개발되었습니다 {cite}`Lun2019,Heiser2021,Hippen2021,Muskovic2021,Alvarez2020,raw:Young2020`.
-이러한 도구는 고유 UMI의 빈도, 검출된 유전자 수, 미토콘드리아 RNA의 비율을 포함하여 다양한 세포 품질 측정치를 통합하며, 일반적으로 이러한 특징에 통계 모델을 적용하여 고품질 세포를 추정된 빈 드롭렛 또는 손상된 세포와 분류합니다.
-이는 일반적으로 세포를 점수화할 수 있고, 세포가 비어 있거나 손상되지 않았을 가능성에 대한 추정된 사후 확률을 기반으로 최종 필터링을 선택할 수 있음을 의미합니다.
-이러한 모델은 일반적으로 단일 세포 {term}`RNA`-seq 데이터에 대해 잘 작동하지만, `DropletUtils` {cite}`Lun2019`의 [`emptyDropsCellRanger`](https://github.com/MarioniLab/DropletUtils/blob/master/R/emptyDropsCellRanger.R) 함수에 노출된 것과 같이 단일 핵 {term}`RNA`-seq 데이터에서 견고한 필터링을 얻으려면 여러 추가 필터 또는 휴리스틱을 적용해야 할 수 있습니다 {cite}`Kaminow2021,raw:He22`.
+This led to the development of several tools specifically designed to detect empty or damaged droplets, or cells generally deemed to be of "low quality" {cite}`Lun2019,Heiser2021,Hippen2021,Muskovic2021,Alvarez2020,raw:Young2020`.
+These tools incorporate a variety of different measures of cell quality, including the frequencies of distinct UMIs, the number of detected genes, and the fraction of mitochondrial RNA, and typically work by applying a statistical model to these features to classify high-quality cells from putative empty droplets or damaged cells.
+This means that cells can typically be scored, and a final filtering can be selected based on an estimated posterior probability that cells are not empty or compromised.
+While these models generally work well for single-cell {term}`RNA`-seq data, one may have to apply several additional filters or heuristics to obtain robust filtering in single-nucleus {term}`RNA`-seq data {cite}`Kaminow2021,raw:He2022`, like those exposed in the [`emptyDropsCellRanger`](https://github.com/MarioniLab/DropletUtils/blob/master/R/emptyDropsCellRanger.R) function of `DropletUtils` {cite}`Lun2019`.
 
-### 이중체 검출
+### Doublet detection
 
-어떤 세포 바코드가 빈 드롭렛 또는 손상된 세포에 해당하는지 결정하는 것 외에도, 이중체 또는 다중체에 해당하는 세포 바코드를 식별하고자 할 수도 있습니다.
-주어진 드롭렛이 두 개(이중체) 또는 그 이상의(다중체) 세포를 포획하면, 이는 이러한 세포 바코드가 나타내는 리드 및 UMI 수와 같은 양과 그들이 표시하는 유전자 발현 프로파일 측면에서 왜곡된 분포를 초래할 수 있습니다.
-세포 바코드의 이중체 상태를 예측하기 위해 많은 도구도 개발되었습니다 {cite}`DePasquale2019,McGinnis2019,Wolock2019,Bais2019,Bernstein2020`.
-일단 검출되면, 이중체 및 다중체일 가능성이 있는 것으로 결정된 세포는 후속 분석에서 제거되거나 달리 조정될 수 있습니다.
+In addition to determining which cell barcodes correspond to empty droplets or damaged cells, one may also wish to identify those cell barcodes that correspond to doublets or multiplets.
+When a given droplet captures two (doublets) or more (multiplets) cells, this can result in a skewed distribution for these cell barcodes in terms of quantities like the number of reads and UMIs they represent, as well as gene expression profiles they display.
+Many tools have also been developed to predict the doublet status of cell barcodes {cite}`DePasquale2019,McGinnis2019,Wolock2019,Bais2019,Bernstein2020`.
+Once detected, cells determined to likely be doublets and multiplets can be removed or otherwise adjusted for in the subsequent analysis.
 
 (raw-proc:output-representation)=
 
-## 카운트 데이터 표현
+## Count data representation
 
-초기 원시 데이터 처리 및 품질 관리를 완료하고 후속 분석으로 넘어갈 때, 세포별 유전자 카운트 행렬이 기껏해야 원래 샘플의 시퀀싱된 분자의 근사치라는 점을 인정하고 기억하는 것이 중요합니다.
-원시 데이터 처리 파이프라인의 여러 단계에서 휴리스틱이 적용되고 이 카운트 행렬 생성을 가능하게 하기 위해 단순화가 이루어집니다.
-예를 들어, 리드 매핑은 불완전하며 세포 바코드 보정도 마찬가지입니다.
-UMI를 정확하게 해결하는 것은 특히 어려우며, 다중 매핑 리드에 부착된 UMI와 관련된 문제는 종종 간과됩니다.
-또한, 여러 프라이밍 부위, 특히 스플라이스되지 않은 분자에서는 일반적으로 가정되는 1분자-1UMI 관계를 위반할 수 있습니다.
+As one completes initial raw data processing and quality control and moves on to subsequent analyses, it is important to acknowledge and remember that the cell-by-gene count matrix is, at best, an approximation of the sequenced molecules in the original sample.
+At several stages of the raw data processing pipeline, heuristics are applied, and simplifications are made to enable the generation of this count matrix.
+For example, read mapping is imperfect, as is cell barcode correction.
+Accurately resolving UMIs is particularly challenging, and issues related to UMIs attached to multimapping reads are often overlooked.
+Additionally, multiple priming sites, especially in unspliced molecules, can violate the commonly assumed one molecule-to-one UMI relationship.
 
-## 간략한 논의
+## Brief discussion
 
-이 장을 마치면서, 위에서 설명한 일반적인 전처리 도구 중 일부에 대한 최근 벤치마킹 및 검토 연구에서 제기된 몇 가지 관찰 및 제안을 전달합니다 {cite}`You_2021,Bruning_2022`.
-물론, 단일 세포 및 단일 핵 RNA-seq 원시 데이터 처리를 위한 방법 및 도구 개발과 이러한 방법에 대한 지속적인 평가는 지속적인 커뮤니티 노력이라는 점에 유의하는 것이 중요합니다.
-따라서 자신의 분석을 수행할 때 여러 다른 도구를 실험하는 것이 종종 유용하고 합리적입니다.
+To close this chapter, we convey some observations and suggestions that have arisen from recent benchmarking and review studies surrounding some of the common preprocessing tools described above {cite}`You_2021,Bruning_2022`.
+It is, of course, important to note that the development of methods and tools for single-cell and single-nucleus RNA-seq raw data processing, as well as the continual evaluation of such methods, is an ongoing community effort.
+It is therefore often useful and reasonable, when performing your own analyses, to experiment with several different tools.
 
-가장 대략적인 수준에서, 가장 일반적인 도구는 데이터를 견고하고 정확하게 처리할 수 있습니다.
-클러스터링과 같은 많은 일반적인 다운스트림 분석과 이를 수행하는 데 사용되는 방법을 사용하면, 전처리 도구의 선택은 일반적으로 분석 프로세스의 다른 단계보다 덜 중요하다고 제안되었습니다 {cite}`You_2021`.
-그럼에도 불구하고, 스플라이스된 전사체로 제한된 경량 매핑을 적용하면 가짜 매핑 및 유전자 발현의 확률이 증가할 수 있음이 관찰되었습니다 {cite}`Bruning_2022`.
+At the coarsest level, the most common tools can process data robustly and accurately.
+It has been suggested that with many common downstream analyses like clustering, and the methods used to perform them, the choice of preprocessing tool typically makes less difference than other steps in the analysis process {cite}`You_2021`.
+Nonetheless, it has also been observed that applying lightweight mapping restricted to the spliced transcriptome can increase the probability of spurious mapping and gene expression {cite}`Bruning_2022`.
 
-궁극적으로, 특정 도구의 선택은 당면한 작업과 사용 가능한 계산 자원에 대한 제약에 크게 좌우됩니다.
-표준 단일 세포 분석을 수행하는 경우, 경량 매핑 기반 방법은 기존 정렬 기반 도구보다 빠르고(종종 상당히) 메모리 효율적이므로 좋은 선택입니다.
-단일 핵 RNA-seq 분석을 수행하는 경우, `alevin-fry`는 특히 매력적인 옵션인데, 메모리 효율적이고 전사체 참조가 스플라이스되지 않은 참조 서열을 포함하도록 확장되더라도 인덱스가 상대적으로 작게 유지되기 때문입니다.
-반면에, (확장된) 전사체 외부에서 매핑되는 리드를 복구하는 것이 중요하거나 다운스트림 분석에 게놈 매핑 사이트가 필요한 경우 정렬 기반 방법이 권장됩니다.
-이는 `sierra` {cite}`sierra`와 같은 도구를 사용한 차등 전사체 사용 분석과 같은 작업에 특히 관련이 있습니다.
-정렬 기반 파이프라인 중에서 {cite:t}`Bruning_2022`에 따르면, `STARsolo`가 `Cell Ranger`보다 선호되어야 하는데, 전자가 후자보다 훨씬 빠르고 메모리를 덜 필요로 하면서도 거의 동일한 결과를 생성할 수 있기 때문입니다.
+Ultimately, the choice of a specific tool largely depends on the task at hand, and the constraints on available computational resources.
+If performing a standard single-cell analysis, lightweight mapping-based methods are a good choice since they are faster (often considerably so) and more memory frugal than existing alignment-based tools.
+If performing single-nucleus RNA-seq analysis, `alevin-fry` is an attractive option in particular, as it remains memory frugal and its index remains relatively small even as the transcriptome reference is expanded to include unspliced reference sequence.
+On the other hand, alignment-based methods are recommended when recovering reads that map outside the (extended) transcriptome is important or when genomic mapping sites are required for downstream analyses.
+This is particularly relevant for tasks such as differential transcript usage analysis using tools like `sierra` {cite}`sierra`.
+Among the alignment-based pipelines, according to {cite:t}`Bruning_2022`, `STARsolo` should be favored over `Cell Ranger` because the former is much faster than the latter, and requires less memory, while it is also capable of producing almost identical results.
 
 (raw-proc:example-workflow)=
 
-## 실제 예제
+## A real-world example
 
-원시 데이터 처리를 위한 다양한 접근 방식의 기본 개념을 다루었으므로, 이제 특정 도구(이 경우 `alevin-fry`)를 사용하여 작은 예제 데이터셋을 처리하는 방법을 시연하는 데 주의를 기울입니다.
-시작하려면, [FASTQ 형식](https://en.wikipedia.org/wiki/FASTQ_format)의 단일 세포 실험에서 시퀀싱된 리드와 리드가 매핑될 참조(예: 전사체)가 필요합니다.
-일반적으로 참조에는 각각 [FASTA](https://en.wikipedia.org/wiki/FASTA_format) 및 [GTF](https://useast.ensembl.org/info/website/upload/gff.html) 형식의 시퀀싱된 종의 게놈 서열 및 해당 유전자 주석이 포함됩니다.
+Given that we have covered the concepts underlying various approaches for raw data processing, we now turn our attention to demonstrating how a specific tool (in this case, `alevin-fry`) can be used to process a small example dataset.
+To start, we need the sequenced reads from a single-cell experiment in [FASTQ format](https://en.wikipedia.org/wiki/FASTQ_format) and the reference (e.g., transcriptome) against which the reads will be mapped.
+Usually, a reference includes the genome sequences and the corresponding gene annotations of the sequenced species in the [FASTA](https://en.wikipedia.org/wiki/FASTA_format) and [GTF](https://useast.ensembl.org/info/website/upload/gff.html) format, respectively.
 
-이 예에서는 10x Genomics 참조 빌드의 인간 참조, [GRCh38 (GENCODE v32/Ensembl 98) 참조](https://support.10xgenomics.com/single-cell-gene-expression/software/release-notes/build#GRCh38_2020A)의 하위 집합인 인간 게놈의 _염색체 5_와 관련 유전자 주석을 참조로 사용합니다.
-이에 따라 10x Genomics의 [인간 뇌종양 데이터셋](https://www.10xgenomics.com/resources/datasets/200-sorted-cells-from-human-glioblastoma-multiforme-3-lt-v-3-1-3-1-low-6-0-0)에서 생성된 참조에 매핑되는 리드 하위 집합을 추출합니다.
+In this example, we will use _chromosome 5_ of the human genome and its related gene annotations as the reference, which is a subset of the Human reference, [GRCh38 (GENCODE v32/Ensembl 98) reference](https://support.10xgenomics.com/single-cell-gene-expression/software/release-notes/build#GRCh38_2020A) from the 10x Genomics reference build.
+Correspondingly, we extract the subset of reads that map to the generated reference from a [human brain tumor dataset](https://www.10xgenomics.com/resources/datasets/200-sorted-cells-from-human-glioblastoma-multiforme-3-lt-v-3-1-3-1-low-6-0-0) from 10x Genomics.
 
-[`Alevin-fry`](https://alevin-fry.readthedocs.io/en/latest/) {cite}`raw:He22`는 빠르고 정확하며 메모리 효율적인 단일 세포 및 단일 핵 데이터 처리 도구입니다.
-[Simpleaf](https://github.com/COMBINE-lab/simpleaf)는 [rust](https://www.rust-lang.org/)로 작성된 프로그램으로, `alevin-fry` 파이프라인을 사용하여 가장 일반적인 프로토콜 및 데이터 유형 중 일부를 처리하기 위한 통합되고 단순화된 인터페이스를 제공합니다.
-방대한 단일 세포 데이터 모음을 처리하기 위한 nextflow 기반 [워크플로우](https://github.com/COMBINE-lab/quantaf) 도구도 존재합니다.
-여기서는 먼저 두 개의 `simpleaf` 명령을 사용하여 단일 세포 원시 데이터를 처리하는 방법을 보여줍니다. 그런 다음, 이 섹션에서 설명한 단계가 어디에서 발생하는지 설명하고 가능한 다른 처리 옵션을 전달하기 위해 이러한 `simpleaf` 명령이 해당하는 `salmon alevin` 및 `alevin-fry` 명령의 전체 집합을 설명합니다.
-이러한 명령은 명령줄에서 실행되며, 이 예제를 실행하는 데 필요한 모든 소프트웨어를 설치하는 데 [`conda`](https://docs.conda.io/en/latest/)가 사용됩니다.
+[`Alevin-fry`](https://alevin-fry.readthedocs.io/en/latest/) {cite}`raw:He2022` is a fast, accurate, and memory-frugal single-cell and single-nucleus data processing tool.
+[Simpleaf](https://github.com/COMBINE-lab/simpleaf) is a program, written in [rust](https://www.rust-lang.org/), that exposes a unified and simplified interface for processing some of the most common protocols and data types using the `alevin-fry` pipeline.
+A nextflow-based [workflow](https://github.com/COMBINE-lab/quantaf) tool also exists to process extensive collections of single-cell data.
+Here we will first show how to process single-cell raw data using two `simpleaf` commands. Then, we describe the complete set of `salmon alevin` and `alevin-fry` commands to which these `simpleaf` commands correspond, to outline where the steps described in this section occur and to convey the possible different processing options.
+These commands will be run from the command line, and [`conda`](https://docs.conda.io/en/latest/) will be used for installing all of the software required for running this example.
 
 (raw-proc:example-prep)=
 
-### 준비
+### Preparation
 
-시작하기 전에 터미널에서 conda 환경을 만들고 필요한 패키지를 설치합니다.
-`Simpleaf`는 [`alevin-fry`](https://alevin-fry.readthedocs.io/en/latest/), [`salmon`](https://salmon.readthedocs.io/en/latest/) 및 [`pyroe`](https://github.com/COMBINE-lab/pyroe)에 의존합니다.
-이들은 모두 `bioconda`에서 사용할 수 있으며 `simpleaf`를 설치할 때 자동으로 설치됩니다.
+Before we start, we create a conda environment in the terminal and install the required package.
+`Simpleaf` depends on [`alevin-fry`](https://alevin-fry.readthedocs.io/en/latest/), [`salmon`](https://salmon.readthedocs.io/en/latest/) and [`pyroe`](https://github.com/COMBINE-lab/pyroe).
+They are all available on `bioconda` and will be automatically installed when installing `simpleaf`.
 
 ```bash
 conda create -n af -y -c bioconda simpleaf
 conda activate af
 ```
 
-````{admonition} Apple 실리콘 기반 장치 사용에 대한 참고 사항
+````{admonition} Note on using an Apple silicon-based device
 
-Conda는 현재 대부분의 패키지를 Apple 실리콘용으로 기본적으로 빌드하지 않습니다.
-따라서 Intel 기반이 아닌 Apple 컴퓨터(예: M1 (Pro/Max/Ultra) 또는 M2 칩 포함)를 사용하는 경우,
-환경이 Rosetta2 변환 계층을 사용하도록 지정해야 합니다.
-이를 위해 위 명령을 다음으로 바꿀 수 있습니다(지침은
-[여기](https://github.com/Haydnspass/miniforge#rosetta-on-mac-with-apple-silicon-hardware)에서 채택).
+Conda does not currently build most packages natively for Apple silicon.
+Therefore, if you are using a non-Intel-based Apple computer (e.g., with an M1 (Pro/Max/Ultra) or M2 chip),
+you should make sure to specify that your environment uses the Rosetta2 translation layer.
+To do this, you can replace the above commands with the following (instructions adopted
+from [here](https://github.com/Haydnspass/miniforge#rosetta-on-mac-with-apple-silicon-hardware)):
 
 ```bash
-CONDA_SUBDIR=osx-64 conda create -n af -y -c bioconda simpleaf   # 새 환경 생성
+CONDA_SUBDIR=osx-64 conda create -n af -y -c bioconda simpleaf   # create a new environment
 conda activate af
-conda env config vars set CONDA_SUBDIR=osx-64  # 후속 명령은 intel 패키지 사용
+conda env config vars set CONDA_SUBDIR=osx-64  # subsequent commands use intel packages
 ````
 
-다음으로, 작업 디렉터리 `af_xmpl_run`을 만들고 원격 호스트에서 예제 데이터셋을 다운로드하고 압축을 풉니다.
+Next, we create a working directory, `af_xmpl_run`, and download and uncompress the example dataset from a remote host.
 
 ```bash
-# 작업 디렉터리를 만들고 작업 디렉터리로 이동
-## && 연산자는 단일 코드 줄을 사용하여 두 개의 명령을 실행하는 데 도움이 됩니다.
+# Create a working dir and go to the working directory
+## The && operator helps execute two commands using a single line of code.
 mkdir af_xmpl_run && cd af_xmpl_run
 
-# 예제 데이터셋 및 CB 허용 목록을 가져오고 압축 해제
-## 파이프 연산자(|)는 wget 명령의 출력을 tar 명령으로 전달합니다.
-## `tar xzf` 뒤의 대시 연산자(-)는 첫 번째 명령의 출력을 캡처합니다.
-## - 예제 데이터셋
+# Fetch the example dataset and CB permit list and decompress them
+## The pipe operator (|) passes the output of the wget command to the tar command.
+## The dash operator (-) after `tar xzf` captures the output of the first command.
+## - example dataset
 wget -qO- https://umd.box.com/shared/static/lx2xownlrhz3us8496tyu9c4dgade814.gz | tar xzf - --strip-components=1 -C .
-## 가져온 fastq 파일이 포함된 폴더는 toy_read_fastq라고 합니다.
+## The fetched folder containing the fastq files is called toy_read_fastq.
 fastq_dir="toy_read_fastq"
-## 가져온 인간 참조 파일이 포함된 폴더는 toy_human_ref라고 합니다.
+## The fetched folder containing the human ref files is called toy_human_ref.
 ref_dir="toy_human_ref"
 
-# CB 허용 목록 가져오기
-## 오른쪽 꺾쇠 괄호(>)는 STDOUT을 파일로 리디렉션합니다.
+# Fetch CB permit list
+## the right chevron (>) redirects the STDOUT to a file.
 wget -qO- https://github.com/f0t1h/3M-february-2018/raw/master/3M-february-2018.txt.gz | gunzip - > 3M-february-2018.txt
 
 ```
 
-참조 파일(게놈 FASTA 파일 및 유전자 주석 GTF 파일)과 리드 레코드(FASTQ 파일)가 준비되면, 이제 위에서 논의한 원시 데이터 처리 파이프라인을 적용하여 유전자 카운트 행렬을 생성할 수 있습니다.
+With the reference files (the genome FASTA file and the gene annotation GTF file) and read records (the FASTQ files) ready, we can now apply the raw data processing pipeline discussed above to generate the gene count matrix.
 
 (raw-proc:example-simpleaf)=
 
-### 단순화된 원시 데이터 처리 파이프라인
+### Simplified raw data processing pipeline
 
-[Simpleaf](https://github.com/COMBINE-lab/simpleaf)는 단일 세포 및 핵 원시 데이터 처리를 위한 `alevin-fry` 인터페이스를 단순화하도록 설계되었습니다. 전체 처리 파이프라인을 두 단계로 캡슐화합니다.
+[Simpleaf](https://github.com/COMBINE-lab/simpleaf) is designed to simplify the `alevin-fry` interface for single-cell and nucleus raw data processing. It encapsulates the whole processing pipeline into two steps:
 
-1. [`simpleaf index`](https://simpleaf.readthedocs.io/en/latest/index-command.html)는 제공된 참조를 인덱싱하거나 _splici_ 참조(<u>splic</u>ed transcripts + <u>i</u>ntrons)를 만들고 인덱싱합니다.
-2. [`simpleaf quant`](https://simpleaf.readthedocs.io/en/latest/quant-command.html)는 시퀀싱 리드를 인덱싱된 참조에 매핑하고 매핑 레코드를 정량화하여 유전자 카운트 행렬을 생성합니다.
+1. [`simpleaf index`](https://simpleaf.readthedocs.io/en/latest/index-command.html) indexes the provided reference or makes a _splici_ reference (<u>splic</u>ed transcripts + <u>i</u>ntrons) and index it.
+2. [`simpleaf quant`](https://simpleaf.readthedocs.io/en/latest/quant-command.html) maps the sequencing reads against the indexed reference and quantifies the mapping records to generate a gene count matrix.
 
-`simpleaf`를 사용한 매핑에 대한 고급 사용법 및 옵션은 [여기](https://simpleaf.readthedocs.io/en/latest/)에서 찾을 수 있습니다.
+More advanced usages and options for mapping with `simpleaf` can be found [here](https://simpleaf.readthedocs.io/en/latest/).
 
-`simpleaf index`를 실행할 때, 게놈 FASTA 파일(`-f`)과 유전자 주석 GTF 파일(`-g`)이 제공되면 _splici_ 참조를 생성하고 인덱싱합니다. 전사체 FASTA 파일만 제공되면(`--refseq`), 직접 인덱싱합니다. 현재, _splici_ 인덱스를 권장합니다.
+When running `simpleaf index`, if a genome FASTA file (`-f`) and a gene annotation GTF file(`-g`) are provided, it will generate a _splici_ reference and index it; if only a transcriptome FASTA file is provided (`--refseq`), it will directly index it. Currently, we recommend the _splici_ index.
 
 ```bash
-# simpleaf는 구성 및 데이터를 저장하기 위해 ALEVIN_FRY_HOME 환경 변수가 필요합니다.
-# 예를 들어, 사용하는 기본 프로그램 경로 및 CB 허용 목록
+# simpleaf needs the environment variable ALEVIN_FRY_HOME to store configuration and data.
+# For example, the paths to the underlying programs it uses and the CB permit list
 mkdir alevin_fry_home && export ALEVIN_FRY_HOME='alevin_fry_home'
 
-# simpleaf set-paths 명령은 필요한 도구 경로를 찾고 ALEVIN_FRY_HOME 폴더에 구성 JSON 파일을 작성합니다.
+# the simpleaf set-paths command finds the path to the required tools and writes a configuration JSON file in the ALEVIN_FRY_HOME folder.
 simpleaf set-paths
 
 # simpleaf index
-# 사용법: simpleaf index -o out_dir [-f genome_fasta -g gene_annotation_GTF|--refseq transcriptome_fasta] -r read_length -t number_of_threads
-## -r read_length는 시퀀서가 생물학적 리드(Illumina의 read2)를 생성하기 위해 수행한 시퀀싱 주기 수입니다.
-## 공개적으로 사용 가능한 데이터셋은 일반적으로 설명에 리드 길이가 있습니다. 때로는 주기 수라고도 합니다.
+# Usage: simpleaf index -o out_dir [-f genome_fasta -g gene_annotation_GTF|--refseq transcriptome_fasta] -r read_length -t number_of_threads
+## The -r read_lengh is the number of sequencing cycles performed by the sequencer to generate biological reads (read2 in Illumina).
+## Publicly available datasets usually have the read length in the description. Sometimes they are called the number of cycles.
 simpleaf index \
 -o simpleaf_index \
 -f toy_human_ref/fasta/genome.fa \
@@ -834,25 +835,25 @@ simpleaf index \
 -t 8
 ```
 
-출력 디렉터리 `simpleaf_index`에서 `ref` 폴더에는 _splici_ 참조가 포함되어 있습니다. `index` 폴더에는 _splici_ 참조에 구축된 salmon 인덱스가 포함되어 있습니다.
+In the output directory `simpleaf_index`, the `ref` folder contains the _splici_ reference; The `index` folder contains the salmon index built upon the _splici_ reference.
 
-다음 단계인 `simpleaf quant`는 인덱스 디렉터리와 매핑 레코드 FASTQ 파일을 사용하여 유전자 카운트 행렬을 생성합니다. 이 명령은 매핑, 세포 바코드 보정 및 UMI 분해를 포함하여 이 섹션에서 논의된 모든 주요 단계를 캡슐화합니다.
+The next step, `simpleaf quant`, consumes an index directory and the mapping record FASTQ files to generate a gene count matrix. This command encapsulates all the major steps discussed in this section, including mapping, cell barcode correction, and UMI resolution.
 
 ```bash
-# 시퀀싱 리드 파일 수집
-## reads1 및 reads2 변수는 toy_read_fastq 디렉터리에서 "_R1_" 및 "_R2_" 패턴을 가진 파일 이름을 찾아 정의됩니다.
+# Collecting sequencing read files
+## The reads1 and reads2 variables are defined by finding the filenames with the pattern "_R1_" and "_R2_" from the toy_read_fastq directory.
 reads1_pat="_R1_"
 reads2_pat="_R2_"
 
-## 리드 파일은 정렬되고 쉼표로 구분되어야 합니다.
-### find 명령은 fastq_dir에서 이름 패턴으로 파일을 찾습니다.
-### sort 명령은 파일 이름을 정렬합니다.
-### awk 명령과 paste 명령은 함께 파일 이름을 쉼표로 구분된 문자열로 변환합니다.
+## The read files must be sorted and separated by a comma.
+### The find command finds the files in the fastq_dir with the name pattern
+### The sort command sorts the file names
+### The awk command and the paste command together convert the file names into a comma-separated string.
 reads1="$(find -L ${fastq_dir} -name "*$reads1_pat*" -type f | sort | awk -v OFS=, '{$1=$1;print}' | paste -sd,)"
 reads2="$(find -L ${fastq_dir} -name "*$reads2_pat*" -type f | sort | awk -v OFS=, '{$1=$1;print}' | paste -sd,)"
 
 # simpleaf quant
-## 사용법: simpleaf quant -c chemistry -t threads -1 reads1 -2 reads2 -i index -u [unspliced permit list] -r resolution -m t2g_3col -o output_dir
+## Usage: simpleaf quant -c chemistry -t threads -1 reads1 -2 reads2 -i index -u [unspliced permit list] -r resolution -m t2g_3col -o output_dir
 simpleaf quant \
 -c 10xv3 -t 8 \
 -1 $reads1 -2 $reads2 \
@@ -862,35 +863,35 @@ simpleaf quant \
 -o simpleaf_quant
 ```
 
-이러한 명령을 실행한 후, 결과 정량화 정보는 `simpleaf_quant/af_quant/alevin` 폴더에서 찾을 수 있습니다.
-이 디렉터리 내에는 `quants_mat.mtx`, `quants_mat_cols.txt`, `quants_mat_rows.txt`의 세 가지 파일이 있으며, 이는 각각 카운트 행렬, 이 행렬의 각 열에 대한 유전자 이름, 이 행렬의 각 행에 대한 보정되고 필터링된 세포 바코드에 해당합니다. 이러한 파일의 마지막 줄은 아래에 나와 있습니다.
-여기서 주목할 점은 `alevin-fry`가 USA 모드(<u>u</u>nspliced, <u>s</u>pliced, and <u>a</u>mbiguous mode)로 실행되었으므로 각 유전자의 스플라이스 및 스플라이스되지 않은 상태 모두에 대해 정량화가 수행되었다는 것입니다. 결과 `quants_mat_cols.txt` 파일은 주석이 달린 유전자 수의 3배에 해당하는 행 수를 가지며, 이는 각 유전자의 스플라이스(S), 스플라이스되지 않은(U), 스플라이싱-모호한 변형(A)에 사용된 이름에 해당합니다.
+After running these commands, the resulting quantification information can be found in the `simpleaf_quant/af_quant/alevin` folder.
+Within this directory, there are three files: `quants_mat.mtx`, `quants_mat_cols.txt`, and `quants_mat_rows.txt`, which correspond, respectively, to the count matrix, the gene names for each column of this matrix, and the corrected, filtered cell barcodes for each row of this matrix. The tail lines of these files are shown below.
+Of note here is the fact that `alevin-fry` was run in the USA-mode (<u>u</u>nspliced, <u>s</u>pliced, and <u>a</u>mbiguous mode), and so quantification was performed for both the spliced and unspliced status of each gene — the resulting `quants_mat_cols.txt` file will then have a number of rows equal to 3 times the number of annotated genes which correspond, to the names used for the spliced (S), unspliced (U), and splicing-ambiguous variants (A) of each gene.
 
 ```bash
-# `quants_mat.mtx`의 각 줄은
-# 행 열 항목 형식의 0이 아닌 항목을 나타냅니다.
+# Each line in `quants_mat.mtx` represents
+# a non-zero entry in the format row column entry
 $ tail -3 simpleaf_quant/af_quant/alevin/quants_mat.mtx
 138 58 1
 139 9 1
 139 37 1
 
-# `quants_mat_cols.txt`의 각 줄은
-# (유전자 이름)-(스플라이스 상태) 형식의 유전자의 스플라이스 상태입니다.
+# Each line in `quants_mat_cols.txt` is a splice status
+# of a gene in the format (gene name)-(splice status)
 $ tail -3 simpleaf_quant/af_quant/alevin/quants_mat_cols.txt
 ENSG00000120705-A
 ENSG00000198961-A
 ENSG00000245526-A
 
-# `quants_mat_rows.txt`의 각 줄은 보정된
-# (그리고 잠재적으로 필터링된) 세포 바코드입니다.
+# Each line in `quants_mat_rows.txt` is a corrected
+# (and, potentially, filtered) cell barcode
 $ tail -3 simpleaf_quant/af_quant/alevin/quants_mat_rows.txt
 TTCGATTTCTGAATCG
 TGCTCGTGTTCGAAGG
 ACTGTGAAGAAATTGC
 ```
 
-[`pyroe`](https://github.com/COMBINE-lab/pyroe)의 `load_fry` 함수를 사용하여 카운트 행렬을 Python으로 [`AnnData`](https://anndata.readthedocs.io/en/latest/) 객체로 로드할 수 있습니다.
-유사한 함수인 [loadFry](https://rdrr.io/github/mikelove/fishpond/man/loadFry.html)는 [`fishpond`](https://github.com/mikelove/fishpond) R 패키지에 구현되어 있습니다.
+We can load the count matrix into Python as an [`AnnData`](https://anndata.readthedocs.io/en/latest/) object using the `load_fry` function from [`pyroe`](https://github.com/COMBINE-lab/pyroe).
+A similar function, [loadFry](https://rdrr.io/github/mikelove/fishpond/man/loadFry.html), has been implemented in the [`fishpond`](https://github.com/mikelove/fishpond) R package.
 
 ```python
 import pyroe
@@ -899,9 +900,9 @@ quant_dir = 'simpleaf_quant/af_quant'
 adata_sa = pyroe.load_fry(quant_dir)
 ```
 
-기본 동작은 `Anndata` 객체의 `X` 레이어를 각 유전자에 대한 스플라이스 및 모호한 카운트의 합으로 로드합니다.
-그러나 최근 연구 {cite}`Pool2022` 및 [업데이트된 관행](https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/release-notes)은 단일 세포 RNA-seq 데이터에서도 인트론 카운트를 포함하면 감도가 증가하고 다운스트림 분석에 도움이 될 수 있음을 시사합니다.
-이 정보를 사용하는 가장 좋은 방법은 지속적인 연구 주제이지만, `alevin-fry`는 각 샘플에서 스플라이스, 스플라이스되지 않은 및 모호한 리드를 자동으로 정량화하므로 각 유전자에 대한 총 카운트를 포함하는 카운트 행렬은 다음과 같이 간단하게 얻을 수 있습니다.
+The default behavior loads the `X` layer of the `Anndata` object as the sum of the spliced and ambiguous counts for each gene.
+However, recent work {cite}`Pool2022` and [updated practices](https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/release-notes) suggest that the inclusion of intronic counts, even in single-cell RNA-seq data, may increase sensitivity and benefit downstream analyses.
+While the best way to make use of this information is the subject of ongoing research, since `alevin-fry` automatically quantifies spliced, unspliced, and ambiguous reads in each sample, the count matrix containing the total counts for each gene can be simply obtained as follows:
 
 ```python
 import pyroe
@@ -912,38 +913,38 @@ adata_usa = pyroe.load_fry(quant_dir, output_format={'X' : ['U','S','A']})
 
 (raw-proc:example-map)=
 
-### 완전한 alevin-fry 파이프라인
+### The complete alevin-fry pipeline
 
-`Simpleaf`는 몇 가지 명령으로 "표준" 방식으로 단일 세포 원시 데이터를 처리할 수 있게 합니다.
-다음으로, `pyroe`, `salmon`, `alevin-fry` 명령을 명시적으로 호출하여 동일한 정량화 결과를 생성하는 방법을 보여줍니다.
-교육적 가치 외에도, 각 단계의 정확한 명령을 아는 것은 파이프라인의 일부만 다시 실행해야 하거나 현재 `simpleaf`에서 노출되지 않는 일부 매개변수를 지정해야 하는 경우에 유용합니다.
+`Simpleaf` makes it possible to process single-cell raw data in the "standard" way with a few commands.
+Next, we will show how to generate the identical quantification result by explicitly calling the `pyroe`, `salmon`, and `alevin-fry` commands.
+On top of the pedagogical value, knowing the exact command of each step will be helpful if only a part of the pipeline needs to be rerun or if some parameters not currently exposed by `simpleaf` need to be specified.
 
-{ref}`raw-proc:example-prep` 섹션의 명령은 사전에 실행되어야 합니다.
-다음 명령에서 호출되는 모든 도구, `pyroe`, `salmon`, `alevin-fry`는 `simpleaf`를 설치할 때 이미 설치되었습니다.
+Please note that the commands in the {ref}`raw-proc:example-prep` section should be executed in advance.
+All the tools called in the following commands, `pyroe`, `salmon`, and `alevin-fry`, have already been installed when installing `simpleaf`.
 
-#### 인덱스 빌드
+#### Building the index
 
-먼저, 게놈 FASTA 파일과 유전자 주석 GTF 파일을 처리하여 _splici_ 인덱스를 얻습니다.
-다음 코드 청크의 명령은 위에서 논의한 `simpleaf index` 명령과 유사합니다. 여기에는 두 단계가 포함됩니다.
+First, we process the genome FASTA file and gene annotation GTF file to obtain the _splici_ index.
+The commands in the following code chunk are analogous to the `simpleaf index` command discussed above. This includes two steps:
 
-1. 게놈 및 유전자 주석 파일을 사용하여 `pyroe make-splici`를 호출하여 _splici_ 참조(<u>splic</u>ed transcripts + <u>i</u>ntrons) 빌드
-2. `salmon index`를 호출하여 _splici_ 참조 인덱싱
+1. Building the _splici_ reference (<u>splic</u>ed transcripts + <u>i</u>ntrons) by calling `pyroe make-splici`, using the genome and gene annotation file
+2. Indexing the _splici_ reference by calling `salmon index`
 
 ```bash
-# splici 참조 만들기
-## 사용법: pyroe make-splici genome_file gtf_file read_length out_dir
-## read_length는 시퀀서가 수행한 시퀀싱 주기 수입니다. 확실하지 않은 경우 기술자에게 문의하십시오.
-## 공개적으로 사용 가능한 데이터셋은 일반적으로 설명에 리드 길이가 있습니다.
+# make splici reference
+## Usage: pyroe make-splici genome_file gtf_file read_length out_dir
+## The read_lengh is the number of sequencing cycles performed by the sequencer. Ask your technician if you are not sure about it.
+## Publicly available datasets usually have the read length in the description.
 pyroe make-splici \
 ${ref_dir}/fasta/genome.fa \
 ${ref_dir}/genes/genes.gtf \
 90 \
 splici_rl90_ref
 
-# 참조 인덱싱
-## 사용법: salmon index -t extend_txome.fa -i idx_out_dir -p num_threads
-## $() 표현식은 내부 명령을 실행하고 출력을 제자리에 놓습니다.
-## `splici_ref` 폴더에 ".fa"로 끝나는 파일이 하나만 있는지 확인하십시오.
+# Index the reference
+## Usage: salmon index -t extend_txome.fa -i idx_out_dir -p num_threads
+## The $() expression runs the command inside and puts the output in place.
+## Please ensure that only one file ends with ".fa" in the `splici_ref` folder.
 salmon index \
 -t $(ls splici_rl90_ref/*\.fa) \
 -i salmon_index \
@@ -951,23 +952,23 @@ salmon index \
 
 ```
 
-_splici_ 인덱스는 `salmon_index` 디렉터리에서 찾을 수 있습니다.
+The _splici_ index can be found in the `salmon_index` directory.
 
 (raw-proc:example-quant)=
 
-#### 매핑 및 정량화
+#### Mapping and quantification
 
-다음으로, [`salmon alevin`](https://salmon.readthedocs.io/en/latest/alevin.html)을 호출하여 시퀀싱 리드를 _splici_ 인덱스에 매핑합니다. 이렇게 하면 `alevin-fry`를 사용하여 매핑된 리드를 처리하는 데 필요한 모든 정보가 포함된 `salmon_alevin`이라는 출력 폴더가 생성됩니다.
+Next, we will map the sequencing reads recorded against the _splici_ index by calling [`salmon alevin`](https://salmon.readthedocs.io/en/latest/alevin.html). This will produce an output folder called `salmon_alevin` that contains all the information we need to process the mapped reads using `alevin-fry`.
 
 ```bash
-# FASTQ 파일 수집
-## 파일 이름은 정렬되고 공백으로 구분됩니다.
+# Collect FASTQ files
+## The filenames are sorted and separated by space.
 reads1="$(find -L $fastq_dir -name "*$reads1_pat*" -type f | sort | awk '{$1=$1;print}' | paste -sd' ')"
 reads2="$(find -L $fastq_dir -name "*$reads2_pat*" -type f | sort | awk '{$1=$1;print}' | paste -sd' ')"
 
-# 매핑
-## 사용법: salmon alevin -i index_dir -l library_type -1 reads1_files -2 reads2_files -p num_threads -o output_dir
-## 위에 정의된 변수 reads1 및 reads2는 ${}를 사용하여 전달됩니다.
+# Mapping
+## Usage: salmon alevin -i index_dir -l library_type -1 reads1_files -2 reads2_files -p num_threads -o output_dir
+## The variable reads1 and reads2 defined above are passed in using ${}.
 salmon alevin \
 -i salmon_index \
 -l ISR \
@@ -979,33 +980,33 @@ salmon alevin \
 --sketch
 ```
 
-그런 다음, `alevin-fry`를 사용하여 세포 바코드 보정 및 UMI 분해 단계를 실행합니다. 이 절차에는 세 가지 `alevin-fry` 명령이 포함됩니다.
+Then, we execute the cell barcode correction and UMI resolution step using `alevin-fry`. This procedure involves three `alevin-fry` commands:
 
-1. [`generate-permit-list`](https://alevin-fry.readthedocs.io/en/latest/generate_permit_list.html) 명령은 세포 바코드 보정에 사용됩니다.
-2. [`collate`](https://alevin-fry.readthedocs.io/en/latest/collate.html) 명령은 잘못된 매핑 레코드를 필터링하고, 세포 바코드를 보정하고, 동일한 보정된 세포 바코드에서 유래한 매핑 레코드를 정렬합니다.
-3. [`quant`](https://alevin-fry.readthedocs.io/en/latest/quant.html) 명령은 UMI 분해 및 정량화를 수행합니다.
+1. The [`generate-permit-list`](https://alevin-fry.readthedocs.io/en/latest/generate_permit_list.html) command is used for cell barcode correction.
+2. The [`collate`](https://alevin-fry.readthedocs.io/en/latest/collate.html) command filters out invalid mapping records, corrects cell barcodes and collates mapping records originating from the same corrected cell barcode.
+3. The [`quant`](https://alevin-fry.readthedocs.io/en/latest/quant.html) command performs UMI resolution and quantification.
 
 ```bash
-# 세포 바코드 보정
-## 사용법: alevin-fry generate-permit-list -u CB_permit_list -d expected_orientation -o gpl_out_dir
-## 여기서, 전사체의 역보완 가닥에 매핑되는 리드는 `-d fw`를 지정하여 필터링됩니다.
+# Cell barcode correction
+## Usage: alevin-fry generate-permit-list -u CB_permit_list -d expected_orientation -o gpl_out_dir
+## Here, the reads that map to the reverse complement strand of transcripts are filtered out by specifying `-d fw`.
 alevin-fry generate-permit-list \
 -u 3M-february-2018.txt \
 -d fw \
 -i salmon_alevin \
 -o alevin_fry_gpl
 
-# 매핑 정보 필터링
-## 사용법: alevin-fry collate -i gpl_out_dir -r alevin_map_dir -t num_threads
+# Filter mapping information
+## Usage: alevin-fry collate -i gpl_out_dir -r alevin_map_dir -t num_threads
 alevin-fry collate \
 -i alevin_fry_gpl \
 -r salmon_alevin \
 -t 8
 
-# UMI 분해 + 정량화
-## 사용법: alevin-fry quant -r resolution -m txp_to_gene_mapping -i gpl_out_dir -o quant_out_dir -t num_threads
-## splici_ref 폴더의 `3col.tsv`로 끝나는 파일이 -m 인수에 전달됩니다.
-## `splici_ref` 폴더에 이러한 파일이 하나만 있는지 확인하십시오.
+# UMI resolution + quantification
+## Usage: alevin-fry quant -r resolution -m txp_to_gene_mapping -i gpl_out_dir -o quant_out_dir -t num_threads
+## The file ends with `3col.tsv` in the splici_ref folder will be passed to the -m argument.
+## Please ensure that there is only one such file in the `splici_ref` folder.
 alevin-fry quant -r cr-like \
 -m $(ls splici_rl90_ref/*3col.tsv) \
 -i alevin_fry_gpl \
@@ -1013,47 +1014,47 @@ alevin-fry quant -r cr-like \
 -t 8
 ```
 
-이러한 명령을 실행한 후, 결과 정량화 정보는 `alevin_fry_quant/alevin`에서 찾을 수 있습니다.
-매핑, CB 보정 및 UMI 분해 단계에 관한 기타 관련 정보는 각각 `salmon_alevin`, `alevin_fry_gpl`, `alevin_fry_quant` 폴더에서 찾을 수 있습니다.
+After running these commands, the resulting quantification information can be found in `alevin_fry_quant/alevin`.
+Other relevant information concerning the mapping, CB correction, and UMI resolution steps can be found in the `salmon_alevin`, `alevin_fry_gpl`, and `alevin_fry_quant` folders, respectively.
 
-여기서 주어진 예에서는 `simpleaf` 및 `alevin-fry`를 사용하여 10x Chromium 3' v3 데이터셋을 처리하는 방법을 보여줍니다.
-`Alevin-fry` 및 `simpleaf`는 Dropseq {cite}`raw:Macosko2015`, sci-RNA-seq3 {cite}`raw:Cao2019` 및 기타 10x Chromium 플랫폼을 포함하여 다양한 단일 세포 프로토콜을 처리하기 위한 많은 다른 옵션을 제공합니다.
-다양한 처리 단계에 대한 사용 가능한 옵션의 보다 포괄적인 목록 및 설명은 [`alevin-fry`](https://alevin-fry.readthedocs.io/en/latest/) 및 [`simpleaf`](https://github.com/COMBINE-lab/simpleaf) 설명서에서 찾을 수 있습니다.
-`alevin-fry`는 또한 간단하게 정의된 샘플 시트에서 많은 샘플을 편리하게 처리하기 위한 [nextflow](https://www.nextflow.io/docs/latest/)-기반 워크플로우인 [quantaf](https://github.com/COMBINE-lab/quantaf)를 제공합니다.
+In the example given here, we demonstrate using `simpleaf` and `alevin-fry` to process a 10x Chromium 3' v3 dataset.
+`Alevin-fry` and `simpleaf` provide many other options for processing different single-cell protocols, including but not limited to Dropseq {cite}`raw:Macosko2015`, sci-RNA-seq3 {cite}`raw:Cao2019` and other 10x Chromium platforms.
+A more comprehensive list and description of available options for different stages of processing can be found in the [`alevin-fry`](https://alevin-fry.readthedocs.io/en/latest/) and [`simpleaf`](https://github.com/COMBINE-lab/simpleaf) documentation.
+`alevin-fry` also provides a [nextflow](https://www.nextflow.io/docs/latest/)-based workflow, called [quantaf](https://github.com/COMBINE-lab/quantaf), for conveniently processing many samples from a simply-defined sample sheet.
 
-물론, 이 섹션 전체에서 참조되고 설명된 다른 많은 원시 데이터 처리 도구에 대해서도 유사한 리소스가 존재합니다. 여기에는 [`zUMIs`](https://github.com/sdparekh/zUMIs/wiki) {cite}`zumis`, [`alevin`](https://salmon.readthedocs.io/en/latest/alevin.html) {cite}`Srivastava2019`, [`kallisto|bustools`](https://www.kallistobus.tools/) {cite}`Melsted2021`, [`STARsolo`](https://github.com/alexdobin/STAR/blob/master/docs/STARsolo.md) {cite}`Kaminow2021` 및 [`CellRanger`](https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/what-is-cell-ranger)가 포함됩니다.
-[`nf-core`](https://nf-co.re/)의 [`scrnaseq`](https://nf-co.re/scrnaseq) 파이프라인은 또한 다양한 화학을 사용하여 생성된 단일 세포 RNA-seq 데이터를 처리하기 위한 nextflow 기반 파이프라인을 제공하며 이 섹션에서 설명된 여러 도구를 통합합니다.
+Of course, similar resources exist for many of the other raw data processing tools referenced and described throughout this section, including [`zUMIs`](https://github.com/sdparekh/zUMIs/wiki) {cite}`zumis`, [`alevin`](https://salmon.readthedocs.io/en/latest/alevin.html) {cite}`Srivastava2019`, [`kallisto|bustools`](https://www.kallistobus.tools/) {cite}`Melsted2021`, [`STARsolo`](https://github.com/alexdobin/STAR/blob/master/docs/STARsolo.md) {cite}`Kaminow2021` and [`CellRanger`](https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/what-is-cell-ranger).
+The [`scrnaseq`](https://nf-co.re/scrnaseq) pipeline from [`nf-core`](https://nf-co.re/) also provides a nextflow-based pipeline for processing single-cell RNA-seq data generated using a range of different chemistries and integrates several of the tools described in this section.
 
 (raw-proc:useful-links)=
 
-## 유용한 링크
+## Useful links
 
-[Alevin-fry 튜토리얼](https://combine-lab.github.io/alevin-fry-tutorials/)은 다양한 유형의 데이터 처리를 위한 튜토리얼을 제공합니다.
+[Alevin-fry tutorials](https://combine-lab.github.io/alevin-fry-tutorials/) provide tutorials for processing different types of data.
 
-python의 [`Pyroe`](https://github.com/COMBINE-lab/pyroe) 및 R의 [`roe`](https://github.com/COMBINE-lab/roe)는 `alevin-fry` 정량화 정보 처리를 위한 도우미 함수를 제공합니다. 또한 [`quantaf`](https://combine-lab.github.io/quantaf)의 전처리된 데이터셋에 대한 인터페이스를 제공합니다.
+[`Pyroe`](https://github.com/COMBINE-lab/pyroe) in python and [`roe`](https://github.com/COMBINE-lab/roe) in R provide helper functions for processing `alevin-fry` quantification information. They also provide an interface to the preprocessed datasets in [`quantaf`](https://combine-lab.github.io/quantaf).
 
-[`Quantaf`](https://github.com/COMBINE-lab/quantaf)는 입력 시트를 기반으로 다수의 단일 세포 및 단일 핵 데이터를 편리하게 처리하기 위한 `alevin-fry` 파이프라인의 nextflow 기반 워크플로우입니다. 공개적으로 사용 가능한 단일 세포 데이터셋의 전처리된 정량화 정보는 [웹페이지](https://combine-lab.github.io/quantaf)에서 확인할 수 있습니다.
+[`Quantaf`](https://github.com/COMBINE-lab/quantaf) is a nextflow-based workflow of the `alevin-fry` pipeline for conveniently processing a large number of single-cell and single-nucleus data based on the input sheets. The preprocessed quantification information of publicly available single-cell datasets is available on its [webpage](https://combine-lab.github.io/quantaf).
 
-[`Simpleaf`](https://github.com/COMBINE-lab/simpleaf)는 위의 예에서 보여준 것처럼 _splici_ 참조 만들기에서 정량화까지 전체 파이프라인을 단 두 개의 명령으로 실행할 수 있도록 하는 alevin-fry 워크플로우의 래퍼입니다.
+[`Simpleaf`](https://github.com/COMBINE-lab/simpleaf) is a wrapper of the alevin-fry workflow that allows executing the whole pipeline, from making _splici_ reference to quantification as shown in the above example, using only two commands.
 
-[갤럭시 프로젝트](https://galaxyproject.org/)의 scRNA-seq 원시 데이터 처리 튜토리얼은 [여기](https://training.galaxyproject.org/training-material/topics/transcriptomics/tutorials/scrna-preprocessing-tenx/tutorial.html)와 [여기](https://training.galaxyproject.org/training-material/topics/transcriptomics/tutorials/scrna-preprocessing/tutorial.html)에서 찾을 수 있습니다.
+Tutorials for processing scRNA-seq raw data from [the galaxy project](https://galaxyproject.org/) can be found at [here](https://training.galaxyproject.org/training-material/topics/transcriptomics/tutorials/scrna-preprocessing-tenx/tutorial.html) and [here](https://training.galaxyproject.org/training-material/topics/transcriptomics/tutorials/scrna-preprocessing/tutorial.html).
 
-FastQC 보고서 설명 및 평가 튜토리얼은 [MSU](https://rtsf.natsci.msu.edu/genomics/technical-documents/fastqc-tutorial-and-faq.aspx), [HBC 교육 프로그램](https://hbctraining.github.io/Intro-to-rnaseq-hpc-salmon/lessons/qc_fastqc_assessment.html), [Galaxy Training](https://training.galaxyproject.org/training-material/topics/sequence-analysis/tutorials/quality-control/tutorial.html) 및 [QC Fail 웹사이트](https://sequencing.qcfail.com/software/fastqc/)에서 사용할 수 있습니다.
+Tutorials for explaining and evaluating FastQC report are available from [MSU](https://rtsf.natsci.msu.edu/genomics/technical-documents/fastqc-tutorial-and-faq.aspx), [the HBC training program](https://hbctraining.github.io/Intro-to-rnaseq-hpc-salmon/lessons/qc_fastqc_assessment.html), [Galaxy Training](https://training.galaxyproject.org/training-material/topics/sequence-analysis/tutorials/quality-control/tutorial.html) and [the QC Fail website](https://sequencing.qcfail.com/software/fastqc/).
 
 (raw-proc:references)=
 
-## 참고 문헌
+## References
 
 ```{bibliography}
 :filter: docname in docnames
 :labelprefix: raw
 ```
 
-## 기여자
+## Contributors
 
-다음 분들의 기여에 감사드립니다.
+We gratefully acknowledge the contributions of:
 
-### 저자
+### Authors
 
 - Dongze He
 - Avi Srivastava
@@ -1061,6 +1062,6 @@ FastQC 보고서 설명 및 평가 튜토리얼은 [MSU](https://rtsf.natsci.msu
 - Rob Patro
 - Seo H. Kim
 
-### 검토자
+### Reviewers
 
 - Lukas Heumos
