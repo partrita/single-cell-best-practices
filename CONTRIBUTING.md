@@ -1,35 +1,42 @@
-# 기여하기
+# Contributing
 
-## 우리의 철학
+## Our philosophy
 
-우리는 이 책이 사람들에게 단일 세포 및 공간 데이터 분석을 소개하는 자료가 되는 것을 목표로 하며, 초심자와 숙련된 분석가 모두가 올바르게 작업을 수행할 수 있도록 보장합니다. 우리의 권장 사항이 모범 사례를 반영하도록 하기 위해, 우리는 전적으로 외부의 독립적인 벤치마크에 의존하려고 노력합니다.
+We aim for this book to be a resource for introducing people to single-cell and spatial data analysis while ensuring that newcomers and experienced analysts alike do things properly.
+To ensure our recommendations reflect best practices, we try to rely exclusively on external and independent benchmarks.
 
-## 어떻게 기여할 수 있나요?
+## How can I contribute?
 
-우리는 기여를 따뜻하게 환영하며, 특히 우리의 모범 사례를 최신 상태로 유지하는 데 도움이 되는 기여를 환영합니다! 그러나 [위](#우리의-철학)에서 언급했듯이 이러한 권장 사항은 높은 기준을 따릅니다.
+We warmly welcome contributions, especially those that help us keep our best practices up to date!
+However, as mentioned [above](#our-philosophy), these recommendations are held to high standards.
 
-새로운 튜토리얼, 수정 또는 확장을 제안하는 경우, 먼저 이슈를 열어 우리와 아이디어를 논의하는 것을 강력히 권장합니다. 우리는 항상 최신 개발에 대해 배우고 싶어하며 현재의 모범 사례에 대해 기꺼이 논의합니다. 또한 [퀴즈 및 플래시카드](#사용자-정의-퀴즈-및-플래시카드-만들기) 형태의 기여도 권장합니다. 어떤 제안이든: 이슈를 열고 연락주세요!
+If you're proposing new tutorials, corrections, or extensions, we strongly recommend opening an issue first to talk about your ideas with us.
+We're always eager to learn about the latest developments and are happy to discuss the current state of best practices.
+We also encourage contributions in the form of [quizzes and flashcards](#create-custom-quizzes-and-flashcards).
+Whatever proposal you have: Just open an issue and let's get in touch!
 
-[![이슈 열기](https://img.shields.io/badge/Open%20Issue-blue?logo=github)](https://github.com/theislab/single-cell-best-practices/issues/new?title=Your+Issue+Title&body=Describe+your+issue+here)
+[![Open an Issue](https://img.shields.io/badge/Open%20Issue-blue?logo=github)](https://github.com/theislab/single-cell-best-practices/issues/new?title=Your+Issue+Title&body=Describe+your+issue+here)
 
-## 책의 구조
+## Book architecture
 
-`jupyter_book` 폴더에는 책의 소스 콘텐츠와 구성이 포함되어 있습니다. 여러 구성 파일 외에도 모든 챕터는 `conditions` 폴더와 같이 각 섹션 폴더로 그룹화됩니다. 각 섹션에는 관련 노트북과 [관련 파일](#모든-챕터의-필수-파일)이 포함되어 있습니다.
+The `jupyter_book` folder contains the source content and configuration for the book.
+In addition to several configuration files, all chapters are grouped into their respective section folders — for example, the `conditions` folder.
+Each section contains the relevant notebooks along with their [associated files](#essential-files-for-every-chapter).
 
-폴더 레이아웃의 예는 다음과 같습니다:
+Here’s an example of the folder layout:
 
 ```bash
 ├── conditions
-│   ├── compositional_keytakeaways.txt
-│   ├── compositional.bib
-│   ├── compositional.ipynb
-│   ├── compositional.yml
-│   ├── differential_gene_expression_keytakeaways.txt
-│   ├── differential_gene_expression.bib
-│   ├── differential_gene_expression.ipynb
-│   ├── differential_gene_expression.yml
-│   ├── gsea_pathway_keytakeaways.txt
-│   └── ...
+│   ├── compositional_keytakeaways.txt
+│   ├── compositional.bib
+│   ├── compositional.ipynb
+│   ├── compositional.yml
+│   ├── differential_gene_expression_keytakeaways.txt
+│   ├── differential_gene_expression.bib
+│   ├── differential_gene_expression.ipynb
+│   ├── differential_gene_expression.yml
+│   ├── gsea_pathway_keytakeaways.txt
+│   └── ...
 ├── ...
 ├── _toc.yml
 ├── _config.yml
@@ -39,267 +46,298 @@
 ├── outlook.md
 ├── preamble.md
 ├── _static
-│   ├── book.css
-│   ├── book.js
-│   ├── favicon.ico
-│   ├── images
-│   │   ├── conditions
-│   │   │   ├── compositional.jpg
-│   │   │   └── differential_gene_expression.jpg
-│   │   └── ...
+│   ├── book.css
+│   ├── book.js
+│   ├── favicon.ico
+│   ├── images
+│   │   ├── conditions
+│   │   │   ├── compositional.jpg
+│   │   │   └── differential_gene_expression.jpg
+│   │   └── ...
 ```
 
-## 책 빌드하기
+## Building the book
 
-책을 빌드하려면 다음 종속성을 설치해야 합니다:
+The book requires the following dependencies to be installed:
 
 1. jupyter-book
 2. jupytext
 3. beautifulsoup4
 
-[여기에서 예제 Conda 환경을 찾을 수 있습니다](https://github.com/theislab/single-cell-best-practices/blob/development/environment.yml).
+[An example Conda environment can be found here](https://github.com/theislab/single-cell-best-practices/blob/development/environment.yml).
 
-환경 파일을 사용하여 다음 명령을 실행하여 책을 빌드할 환경을 만듭니다.
+Run the following command with the environment file to create the environment to build the book.
 
 ```bash
 conda env create -f environment.yml
 ```
 
-그런 다음 책을 빌드하는 것은 간단합니다:
+Building the book is then as simple as:
 
 ```bash
 make
 ```
 
-그러면 전체 책이 빌드됩니다. 이것은 노트북을 실행하지 않으며 업데이트된 챕터는 별도의 단계에서 업데이트해야 합니다.
+which will build the complete book.
+This does not execute any notebooks and any updated chapters must be updated in a separate step.
 
-빌드 디렉토리를 정리하려면 다음을 실행하십시오:
+To clean the build directory run:
 
 ```bash
 make clean
 ```
 
-### 개별 챕터 빌드하기
+### Building individual chapters
 
-모든 챕터는 Jupyter 노트북으로 제공되며 종단 간 실행 가능합니다. 챕터에 대한 도구의 다양한 요구 사항으로 인해 모든 챕터를 빌드할 수 있는 단일 환경을 제공할 수 없습니다. 따라서 챕터별로 최소한의 Conda 환경을 제공하기로 결정했습니다. 이는 각 폴더에서 찾을 수 있습니다.
+All chapters are available as Jupyter Notebooks and end-to-end executable.
+The diverse requirements of tools for the chapters do not allow it for us to provide a single environment that can build all chapters.
+Hence, we decided to provide minimal Conda environments per chapter.
+These can be found in the respective folders.
 
 > [!NOTE]
-> 선택한 환경 파일로 다음 명령을 실행하여 빌드하려는 챕터의 환경을 만듭니다.
+> Run the following command with the environment file of choice to create the environment for the chapter that you want to build.
 >
 > ```bash
 > conda env create -f CHAPTER-NAME.yml
 > ```
 >
-> 이제 노트북의 모든 셀을 실행할 수 있습니다.
+> Now you can execute all cells in the notebook.
 
-## 기여자를 위한 스타일 가이드
+## Style guide for contributors
 
-### 모든 챕터의 필수 파일
+### Essential files for every chapter
 
-각 챕터에는 몇 가지 필수 파일이 함께 제공됩니다. `.ipynb` 노트북에는 주요 내용이 포함되어 있으며 함께 제공되는 `.bib` 파일에서 인용을 가져옵니다. `.yml` 파일은 [위](#개별-챕터-빌드하기)에서 설명한 대로 최소한의 Conda 환경을 정의합니다. 마지막으로, `_keytakeaways.txt` 파일은 지정된 [형식](#핵심-내용-환경-및-lamin-드롭다운)에 따라 챕터의 주요 아이디어를 요약합니다.
+Each chapter comes with a few essential files.
+The `.ipynb` notebook contains the main content and includes citations drawn from the accompanying `.bib` file.
+The `.yml` file defines a minimal Conda environment, as described [above](#building-individual-chapters).
+Finally, the `_keytakeaways.txt` file summarizes the chapter’s main ideas, following the specified [format](#key-takeaways-environment-and-lamin-dropdown).
 
 ```bash
 ├── SECTION-NAME
-│   ├── CHAPTER-NAME.ipynb
-│   ├── CHAPTER-NAME.bib
-│   ├── CHAPTER-NAME.yml
-│   ├── CHAPTER-NAME_keytakeaways.txt
-│   ├── ...
+│   ├── CHAPTER-NAME.ipynb
+│   ├── CHAPTER-NAME.bib
+│   ├── CHAPTER-NAME.yml
+│   ├── CHAPTER-NAME_keytakeaways.txt
+│   ├── ...
 ```
 
-### 노트북 구조
+### Notebook Structure
 
-각 `.ipynb` 노트북은 다음 표준 구조를 따라야 합니다:
+Each `.ipynb` notebook should follow this standard structure:
 
-1. 🧠 **제목**
-2. 🔽 **드롭다운 섹션**
-   - 핵심 내용
-   - 환경 설정
-   - Lamin 설정
-3. 📖 **주요 내용**
-4. 🔗 **참고 항목** _(드롭다운)_
-5. ❓ **퀴즈 / 플래시카드**
-6. 📚 **참고 문헌**
-7. 👥 **기여자**
+1. 🧠 **Title**
+2. 🔽 **Dropdown Section**
+   - Key Takeaways
+   - Environment Setup
+   - Lamin Setup
+3. 📖 **Main Content**
+4. 🔗 **See Also** _(Dropdown)_
+5. ❓ **Quiz / Flashcards**
+6. 📚 **References**
+7. 👥 **Contributors**
 
-제목 바로 뒤에 오는 모든 드롭다운은 해당 [요구 사항](#핵심-내용-환경-및-lamin-드롭다운)을 충족하면 자동으로 삽입됩니다. 또한 각 챕터는 다루는 주요 개념을 강화하는 몇 가지 질문으로 마무리되어야 합니다. [아래](#사용자-정의-퀴즈-및-플래시카드-만들기)에서 사용자 정의 형식으로 퀴즈와 플래시카드를 만드는 방법에 대한 지침을 찾을 수 있습니다. 또한 책의 챕터를 빠르고 효과적으로 만들 수 있는 챕터 [템플릿](/jupyter-book/template/template.ipynb)도 준비했습니다.
+All dropdowns immediately following the title are automatically inserted if they meet the corresponding [requirements](#key-takeaways-environment-and-lamin-dropdown).
+In addition, each chapter should conclude with a few questions that reinforce the main concepts covered.
+[Below](#create-custom-quizzes-and-flashcards) you will find instructions on how to create quizzes and flashcards in our custom format.
+We’ve also prepared a chapter [template](/jupyter-book/template/template.ipynb) with which you can quickly and effectively create a chapter for our book.
 
-### 유용한 링크
+### Helpful links
 
-- [Jupyter Book 문서](https://jupyterbook.org/en/stable/intro.html)
-- [MyST 마크다운 문서](https://mystmd.org)
-- [Sphinx 문서](https://www.sphinx-doc.org/en/master/)
+- [Jupyter Book documentation](https://jupyterbook.org/en/stable/intro.html)
+- [MyST Markdown documentation](https://mystmd.org)
+- [Sphinx documentation](https://www.sphinx-doc.org/en/master/)
 
-### 규칙
+### Rules
 
-- 검토를 쉽게 하기 위해 각 문장을 별도의 줄에 배치하십시오.
-- 독자가 내용에 압도되지 않도록 드롭다운을 사용하십시오.
-- 노이즈를 줄이려면 경고를 생성하지 않는 깔끔한 코드를 작성하고 노트북 시작 시 정보가 없는 경고를 필터링해야 합니다.
-- 각 챕터에서 사용된 모든 용어집 용어를 `` {term}`예시 용어` ``로 연결하십시오.
-  - 챕터 내에서 각 용어의 **첫 번째 등장**에만 링크하십시오 — 나타날 때마다 링크하지 마십시오.
-  - 책 전체에서 여러 번 나타나고 아직 목록에 없는 경우에만 용어집에 새 용어를 추가하십시오. 이 경우 다른 챕터에도 이 용어에 대한 링크를 추가하십시오. 용어가 한 번만 사용되고 불분명할 수 있는 경우 해당 챕터 내에서 직접 설명을 제공하십시오.
-  - 용어집 항목과 의미가 같거나 철자가 다른 용어를 연결하려면 다음 형식을 사용하십시오: `` {term}`사용자 용어 <용어집 용어>` `` (예: `` {term}`바코드 <Barcode>` ``).
-  - 핵심 내용에는 용어를 연결하지 마십시오!
-- 수 시간의 교정 작업 기반: `{cite}` 앞에 항상 공백을 두십시오 (예: ``"이것은 {cite}`Smith2017`에 의해 나타났습니다."``).
-- 참고 문헌에는 항상 `doi`와 `url`이 포함되어야 합니다.
-- 미국 영어로 작성하십시오.
+- Place each sentence on its own line to make reviewing easier.
+- Use dropdowns so that the reader is not overwhelmed by the content.
+- To reduce noise, we should aim to write clean code that avoids generating warnings, and also filter out any non-informative warnings at the start of the notebook.
+- In each chapter, link all used glossary terms with `` {term}`EXAMPLE TERM` ``.
+  - Only link the **first occurrence** of each term within the chapter — not every time it appears.
+  - Add a new term to the glossary only if it appears multiple times throughout the book and has not yet been listed.
+    In this case, also add the link to this term in the other chapters.
+    If the term is used just once and may be unclear, provide a direct explanation within the corresponding chapter.
+  - To link a term that has the same meaning or a different spelling than its glossary entry, use this format: `` {term}`YOUR TERM <GLOSSARY TERM>` `` (e.g.: `` {term}`barcodes <Barcode>` ``).
+  - Don't link terms in the key takeaways!
+- Based on hours of proofreading: Always make a space before `{cite}` (e.g., ``"This was shown by {cite}`Smith2017`."``).
+- References should always contain `doi` and `url`.
+- Write in American English.
 
-### 핵심 내용, 환경 및 lamin 드롭다운
+### Key takeaways, environment and lamin dropdown
 
-환경 및 lamin 드롭다운은 모든 챕터의 제목 뒤에 삽입됩니다. 챕터에 해당 드롭다운을 원하지 않는 경우 `scripts/dropdowns/keytakeaways.py`의 블랙리스트(`black_list_files_yml` 또는 `black_list_files_lamin`)에 노트북을 나열해야 합니다. 핵심 내용 드롭다운은 `<노트북-이름>_keytakeaways.txt`라는 파일이 노트북과 동일한 디렉토리에 있는 경우에만 삽입됩니다. 이 파일에는 다음 형식으로 핵심 내용이 포함되어야 합니다:
+The environment and lamin dropdowns are inserted after the title of every chapter.
+If you don't want to have those dropdowns in your chapter, make sure to list your notebook in the blacklists of `scripts/dropdowns/keytakeaways.py` (`black_list_files_yml` or `black_list_files_lamin`).
+A key takeaways dropdown is only inserted if a file called `<name-notebook>_keytakeaways.txt` is in the same directory as your notebook.
+This file has to contain the key takeaways in the following format:
 
 ```
 1
-핵심 내용 1의 첫 번째 문장.
-핵심 내용 1의 두 번째 문장.
+The first sentence of key takeaway 1.
+The second sentence of key takeaway 1.
 
 2
-핵심 내용 2의 첫 번째 문장.
+The first sentence of key takeaway 2.
 
 ...
 ```
 
-핵심 내용을 챕터의 특정 제목에 연결하려면 제목 앞에 `<섹션-이름>-<노트북-이름>-key-takeaway-<핵심-내용-번호>`를 레이블로 추가하십시오. 모든 `_`를 `-`로 바꾸면 핵심 내용의 카드가 텍스트의 제목에 연결됩니다 (예: `(preprocessing-visualization-dimensionality-reduction-key-takeaway-2)=`).
+If you want to link a key takeaway to a certain heading in your chapter, add `<section-name>-<notebook-name>-key-takeaway-<key-takeaway-number>` as a label before the heading.
+Replace all `_` with `-`, and the card of the key takeaway will be linked to the heading in the text (e.g., `(preprocessing-visualization-dimensionality-reduction-key-takeaway-2)=`).
 
-우리의 CI 워크플로우(`.github/worksflows/build_book.yml`)는 책을 빌드할 때 `make dropdown`을 호출합니다. 테스트를 위해 `make` 전에 `make dropdown`을 호출하여 로컬에서 드롭다운을 삽입할 수 있습니다.
+Our CI workflow (`.github/worksflows/build_book.yml`) will call `make dropdown` when building the book.
+For testing, you can insert the dropdowns locally by calling `make dropdown` before `make`.
 
 > [!WARNING]
-> 로컬에서 `make dropdown`을 실행하면 거의 모든 노트북 파일이 수정됩니다. 이러한 변경 사항은 절대로 커밋하거나 리포지토리에 푸시해서는 안 됩니다. `git restore .`를 사용하여 명령을 실행한 직후 이러한 변경 사항을 폐기하는 것이 좋습니다. 원하는 변경 사항을 미리 스테이징했는지 확인하십시오 (`git add`).
+> Executing `make dropdown` locally will modify nearly all notebook files.
+> These changes should never be committed or pushed to the repository.
+> We recommend discarding these changes immediately after running the command using `git restore .`.
+> Ensure you’ve staged your wanted changes (`git add`) beforehand.
 
 ### Lamindb
 
-[Lamindb](https://github.com/laminlabs/lamindb)는 계산 생물학에서 대규모 학습을 가능하게 하는 오픈 소스 데이터 프레임워크입니다. 우리는 [theislab/sc-best-practices](https://lamin.ai/theislab/sc-best-practices) 인스턴스를 사용하여 데이터셋과 노트북을 저장, 공유 및 로드하기 위해 lamindb를 사용합니다. [Lamin Labs](https://lamin.ai/)의 무료 호스팅에 감사드립니다.
+[Lamindb](https://github.com/laminlabs/lamindb) is an open-source data framework to enable learning at scale in computational biology.
+We use lamindb to store, share, and load datasets and notebooks using the [theislab/sc-best-practices](https://lamin.ai/theislab/sc-best-practices) instance.
+We acknowledge free hosting from [Lamin Labs](https://lamin.ai/).
 
-병합된 기여를 한 경우 `theislab/sc-best-practices` 인스턴스에 추가되도록 요청하십시오. 그런 다음 사용된 모든 데이터셋이 인스턴스에서 직접 로드되는지 확인하십시오. 인스턴스에 새 데이터셋을 업로드하는 경우 별도의 노트북을 만들어 [`scripts`](/scripts/) 폴더에 배치하십시오. [`scripts`](/scripts/) 폴더의 기존 노트북을 가이드로 사용할 수 있습니다. 마지막으로, 노트북을 다시 실행하는 동안 `ln.track()` 및 `ln.finish()`를 사용하여 인스턴스에도 최신 버전을 유지하십시오. [템플릿](/jupyter-book/template/template.ipynb)은 노트북 추적의 기본 단계를 보여줍니다!
+When making contributions that got merged, ask us to be added to the `theislab/sc-best-practices` instance.
+Then, ensure that all used datasets are loaded directly from the instance.
+If you upload a new dataset to the instance, create a separate notebook for it and place it in the [`scripts`](/scripts/) folder.
+You can use the existing notebooks in the [`scripts`](/scripts/) folder as a guide.
+Finally, use `ln.track()` and `ln.finish()` while re-running the notebook to have the latest version in the instance as well.
+The [template](/jupyter-book/template/template.ipynb) shows the basic steps for tracking a notebook!
 
 > [!Note]
 >
-> 1. **lamin 계정 만들기**
+> 1. **Create a lamin account**
 >
->    - [지침](https://docs.lamin.ai/setup#sign-up-log-in)에 따라 가입하고 로그인하십시오.
->    - `theislab/sc-best-practices` 인스턴스에 추가되도록 요청하십시오.
+>    - Sign up and log in following [the instructions](https://docs.lamin.ai/setup#sign-up-log-in).
+>    - Ask us to be added to the `theislab/sc-best-practices` instance.
 >
-> 2. **lamindb 설치**
+> 2. **Install lamindb**
 >
->    - 환경에 lamindb Python 패키지를 설치하십시오:
+>    - Install the lamindb Python package in your environment:
 >
 >    ```bash
 >    pip install lamindb[bionty,jupyter,zarr]
 >    ```
 >
-> 3. **[theislab/sc-best-practices 인스턴스](https://lamin.ai/theislab/sc-best-practices)에 연결**
+> 3. **Connect to the [theislab/sc-best-practices instance](https://lamin.ai/theislab/sc-best-practices)**
 >
->    - `lamin connect` 명령을 실행하십시오:
+>    - Run the `lamin connect` command:
 >
 >    ```bash
 >    lamin connect theislab/sc-best-practices
 >    ```
 >
->    - 이제 `→ connected lamindb: theislab/sc-best-practices`가 표시됩니다.
->    - 노트북에서 lamindb를 사용할 준비가 되었습니다!
+>    - You should now see `→ connected lamindb: theislab/sc-best-practices`.
+>    - You are ready to use lamindb in your notebook!
 
-### 사용자 정의 퀴즈 및 플래시카드 만들기
+### Create custom quizzes and flashcards
 
-퀴즈나 플래시카드를 만들려면 `jupyter-book/src/lib.py`의 헬퍼 함수를 사용하십시오. 객관식 문제나 간단한 플립 카드를 만들 수 있습니다.
+To build quizzes or flashcards, use the helper functions in `jupyter-book/src/lib.py`.
+You can create multiple-choice questions or simple flip cards.
 
-1. 노트북 코드 셀을 다음으로 시작하십시오
+1. Start your notebook code cell with
 
 ```python
 %run ../src/lib.py
 ```
 
-2. 그런 다음 원하는 만큼 질문을 추가하십시오. 예를 들어:
+2. Then, add as many questions as you like. For example:
 
 ```python
-flip_card("q1", "2 + 2는 무엇인가요?", "4")
+flip_card("q1", "What is 2 + 2?", "4")
 multiple_choice_question(
    "q1",
-   "프랑스의 수도는 어디인가요?",
-   ["파리", "런던", "베를린", "마드리드"],
-   "파리",
+   "What is the capital of France?",
+   ["Paris", "London", "Berlin", "Madrid"],
+   "Paris",
    {
-         "런던": "런던은 영국의 수도입니다",
-         "베를린": "베를린은 독일의 수도입니다",
-         "마드리드": "마드리드는 스페인의 수도입니다",
+         "London": "London is the capital of the UK",
+         "Berlin": "Berlin is the capital of Germany",
+         "Madrid": "Madrid is the capital of Spain",
    }
 )
 ```
 
-3. 코드 셀을 실행하면 객관식 문제나 플립 카드가 출력으로 생성됩니다.
+3. Run the code cell and it will build the multiple-choice questions or flip cards as output.
 
 > [!WARNING]
-> 책을 빌드할 때 코드를 제거하려면 코드 셀에 `remove-input` 셀 태그를 추가하십시오.
+> Add the cell tag `remove-input` to the code cell to remove the code, when building the book.
 
-글꼴 크기, 텍스트 색상 등을 조정할 수도 있습니다. 자세한 내용은 `jupyter-book/src/lib.py`의 메서드 설명을 확인하십시오.
+You can also adjust the font size, text color and much more.
+For detailed information, check out the method descriptions in `jupyter-book/src/lib.py`.
 
-### 사전 커밋
+### Pre commit
 
-사전 커밋은 커밋하기 전에 마크다운과 코드의 실수를 자동으로 확인하는 도구입니다.
+Pre-commit is a tool that automatically checks your markdown and code for mistakes before you commit it.
 
-1. `pre-commit`을 설치하십시오:
+1. Please install `pre-commit`:
 
 ```bash
 pip install pre-commit
 ```
 
-2. 다음으로, 리포지토리의 루트에서 활성화하십시오:
+2. Next, activate it in the root of the repository:
 
 ```bash
 pre-commit install
 ```
 
-3. 그 후에는 언제든지 수동으로 실행할 수 있습니다:
+3. Afterwards, you can always manually run it:
 
 ```bash
 pre-commit run -a
 ```
 
-변경 사항을 커밋하려고 하면 오류가 자동으로 확인되고 가능한 경우 수정됩니다. `git add`로 이러한 변경 사항을 커밋에 추가하기만 하면 됩니다.
+If you try to commit changes, they are automatically checked for errors and adjusted if possible.
+Simply add these changes to your commit with `git add`.
 
-### `towncrier`로 변경 로그 항목 추가하기
+### Adding changelog entries with `towncrier`
 
-우리는 변경 로그를 관리하기 위해 `towncrier`를 사용합니다. PR을 만들 때 변경 로그 항목을 포함하는 방법은 다음과 같습니다:
+We use `towncrier` to manage our changelog. Here’s how to include a changelog entry when making a PR:
 
-1. `towncrier` 설치 (한 번만):
+1. Install `towncrier` (only once):
 
 ```bash
 pip install towncrier
 ```
 
-2. 평소와 같이 풀 리퀘스트를 만듭니다.
+2. Make your pull request as usual.
 
-3. PR을 연 후 PR 번호(예: 34)를 기록하고 변경 로그 조각을 만듭니다:
+3. After opening your PR, note the PR number (e.g., 34), and create a changelog fragment:
 
 ```bash
-towncrier create -c '블라블라 업데이트 ([#34](https://github.com/theislab/single-cell-best-practices/pull/34)) <sub>@seohyonkim</sub>' 34.changed.md
+towncrier create -c 'update blah blah ([#34](https://github.com/theislab/single-cell-best-practices/pull/34)) <sub>@seohyonkim</sub>' 34.changed.md
 ```
 
-"블라블라 업데이트"를 변경 사항에 대한 간략한 설명으로, PR 번호를 자신의 PR 번호로, PR 작성자를 자신의 github 태그로 바꾸십시오. `markdown` 파일 이름에 유효한 카테고리는 다음과 같습니다:
+Replace "update blah blah" with a brief description of your change, PR number with your PR number, and the author of the PR with your github tag.
+Valid categories for the filename of the `markdown` are:
 
 `added`
 `changed`
 `fixed`
 `removed`
 
-4. 이렇게 하면 `.md` 파일(예: `34.changed.md`)이 리포지토리 루트의 `changelog.d/` 디렉토리에 생성됩니다. 이 파일이 커밋에 포함되었는지 확인하십시오.
+4. This will create a `.md` file (e.g., `34.changed.md`) in the `changelog.d/` directory (at the root of the repo). Make sure this file is included in your commit.
 
-5. 변경 사항을 다시 푸시하십시오.
+5. Push your changes again.
 
-#### 새 버전 릴리스 (유지 관리자만)
+#### Releasing a new version (maintainers only)
 
-새 버전을 릴리스하려면:
+To release a new version:
 
-1. Towncrier를 실행하여 변경 로그를 빌드합니다:
+1. Run Towncrier to build the changelog:
 
 ```bash
 towncrier build --yes --version 2.0.0
 ```
 
-이렇게 하면 `CHANGELOG.md`가 업데이트되고 `changelog.d/` 디렉토리가 제거됩니다.
+This will update `CHANGELOG.md` and remove the `changelog.d/` directory.
 
-2. 생성된 `CHANGELOG.md`의 각 관련 PR 항목 아래에 기여자 이름과 PR 링크를 수동으로 추가합니다.
+2. Add contributor names and links to the PR manually under each relevant PR entry in the generated `CHANGELOG.md`.
 
-3. 향후 PR을 위해 `changelog.d/` 디렉토리를 다시 만듭니다:
+3. Recreate the `changelog.d/` directory for future PRs:
 
 ```bash
 mkdir changelog.d
